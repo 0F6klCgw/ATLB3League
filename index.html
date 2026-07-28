@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ATL B3 Commander League</title>
+<meta name="description" content="Points, goals, and house rules for the ATL B3 Magic: The Gathering Commander League.">
+<style>
+  :root{
+    --bg:#0a0910;
+    --bg-2:#100e18;
+    --panel:#15121f;
+    --panel-2:#1c1828;
+    --line:#2e2740;
+    --line-2:#463a63;
+    --ink:#e8e2d4;
+    --ink-dim:#a79fb8;
+    --ink-faint:#756c8a;
+    --gold:#d9b45b;
+    --gold-2:#f0d48a;
+    --w:#f5f1dc; --u:#7fb4e0; --b:#9b7fc4; --r:#e07b62; --g:#7fc09a;
+    --good:#7fc09a;
+    --bad:#e0605a;
+    --radius:14px;
+    --maxw:1180px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth; scroll-padding-top:76px}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 600px at 12% -8%, rgba(217,180,91,.10), transparent 60%),
+      radial-gradient(900px 520px at 92% 4%, rgba(127,180,224,.09), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font:16px/1.6 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 22px}
+  h1,h2,h3,h4{font-family:"Trajan Pro","Optima","Palatino Linotype",Georgia,serif; letter-spacing:.02em; margin:0}
+  a{color:var(--gold-2)}
+
+  /* ---------- nav ---------- */
+  nav{
+    position:sticky; top:0; z-index:60;
+    background:rgba(10,9,16,.82);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+    transition:background .25s ease, border-color .25s ease;
+  }
+  nav.collapsed{background:rgba(10,9,16,.95); border-bottom-color:var(--line-2); box-shadow:0 6px 22px rgba(0,0,0,.35)}
+  .nav-in{
+    max-width:var(--maxw); margin:0 auto; padding:12px 22px;
+    display:flex; align-items:center; gap:20px;
+    position:relative; transition:padding .25s ease;
+  }
+  nav.collapsed .nav-in{padding-top:8px; padding-bottom:8px}
+  .brand{display:flex; align-items:center; gap:10px; font-family:inherit; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--gold); white-space:nowrap}
+  .pips{display:flex; gap:4px}
+  .pip{width:11px; height:11px; border-radius:50%; box-shadow:0 0 0 1px rgba(0,0,0,.5) inset}
+  .pip.w{background:var(--w)} .pip.u{background:var(--u)} .pip.b{background:var(--b)} .pip.r{background:var(--r)} .pip.g{background:var(--g)}
+  .nav-links{margin-left:auto; display:flex; gap:6px; flex-wrap:wrap}
+  .nav-links a{
+    color:var(--ink-dim); text-decoration:none; font-size:13px; letter-spacing:.08em; text-transform:uppercase;
+    padding:7px 11px; border-radius:8px; font-family:system-ui,sans-serif;
+  }
+  .nav-links a:hover{color:var(--gold-2); background:rgba(217,180,91,.09)}
+
+  /* ---------- hamburger ---------- */
+  .burger{
+    display:none; margin-left:auto; flex:none;
+    width:42px; height:36px; align-items:center; justify-content:center; padding:0;
+    background:none; border:1px solid var(--line-2); border-radius:9px; cursor:pointer;
+    transition:border-color .18s, background .18s;
+  }
+  .burger:hover{border-color:var(--gold); background:rgba(217,180,91,.07)}
+  .burger:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+  .burger .bars{position:relative; display:block; width:18px; height:12px}
+  .burger .bars i{
+    position:absolute; left:0; width:100%; height:2px; border-radius:2px; background:var(--gold);
+    transition:top .24s ease, transform .24s ease, opacity .14s ease;
+  }
+  .burger .bars i:nth-child(1){top:0}
+  .burger .bars i:nth-child(2){top:5px}
+  .burger .bars i:nth-child(3){top:10px}
+  nav.open .burger{border-color:var(--gold)}
+  nav.open .burger .bars i:nth-child(1){top:5px; transform:rotate(45deg)}
+  nav.open .burger .bars i:nth-child(2){opacity:0}
+  nav.open .burger .bars i:nth-child(3){top:5px; transform:rotate(-45deg)}
+
+  /* collapsed: the same links become a dropdown panel */
+  nav.collapsed .burger{display:inline-flex}
+  nav.collapsed .nav-links{
+    position:absolute; top:calc(100% + 10px); right:22px; margin:0;
+    flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:2px;
+    min-width:196px; padding:8px;
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line-2); border-radius:12px;
+    box-shadow:0 20px 44px rgba(0,0,0,.6);
+    opacity:0; visibility:hidden; pointer-events:none;
+    transform:translateY(-8px) scale(.97); transform-origin:top right;
+    transition:opacity .18s ease, transform .18s ease, visibility .18s;
+  }
+  nav.collapsed.open .nav-links{opacity:1; visibility:visible; pointer-events:auto; transform:none}
+  nav.collapsed .nav-links a{padding:10px 13px; border-radius:8px; font-size:13.5px}
+  @media (prefers-reduced-motion: reduce){
+    nav, .nav-in, .burger .bars i, nav.collapsed .nav-links{transition:none}
+  }
+
+  /* ---------- hero ---------- */
+  header.hero{padding:78px 0 54px; text-align:center; position:relative; overflow:hidden}
+  header.hero:after{
+    content:""; position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+    width:min(760px,86%); height:1px;
+    background:linear-gradient(90deg,transparent,var(--line-2),transparent);
+  }
+  header.hero h1{
+    font-size:clamp(38px,7.5vw,74px); line-height:1.02;
+    background:linear-gradient(180deg,#fdf3d6 0%, var(--gold) 62%, #9c7c2e 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .hero-pips{display:flex; justify-content:center; gap:9px; margin-top:26px}
+  .hero-pips .pip{width:14px; height:14px}
+
+  /* ---------- buttons ---------- */
+  .btn-row{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:34px}
+  .btn{
+    display:inline-flex; align-items:center; gap:11px; text-decoration:none;
+    font-family:system-ui,sans-serif; font-size:14px; font-weight:600; letter-spacing:.05em;
+    padding:14px 22px; border-radius:11px; border:1px solid var(--line-2);
+    background:linear-gradient(180deg,var(--panel-2),var(--panel)); color:var(--ink);
+    transition:.18s;
+  }
+  .btn:hover{border-color:var(--gold); color:var(--gold-2); transform:translateY(-2px); box-shadow:0 8px 26px rgba(0,0,0,.45)}
+  .btn.primary{background:linear-gradient(180deg,#e6c876,#c39a3c); color:#1a1408; border-color:#e6c876}
+  .btn.primary:hover{color:#1a1408; box-shadow:0 8px 30px rgba(217,180,91,.3)}
+  .btn svg{width:17px; height:17px; flex:none}
+
+  /* ---------- sections ---------- */
+  section{padding:64px 0; border-top:1px solid transparent}
+  .sec-head{margin-bottom:30px}
+  .sec-head h2{
+    font-size:clamp(25px,3.6vw,36px); color:var(--gold-2);
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  .sec-head h2:after{content:""; flex:1; min-width:40px; height:1px; background:linear-gradient(90deg,var(--line-2),transparent)}
+  .sec-head p{color:var(--ink-dim); margin:12px 0 0; max-width:760px}
+
+  /* ---------- generic panel ---------- */
+  .panel{
+    background:linear-gradient(180deg,var(--panel),rgba(21,18,31,.55));
+    border:1px solid var(--line); border-radius:var(--radius); padding:24px;
+  }
+  .grid-3{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px}
+  .step-n{
+    font-family:system-ui,sans-serif; font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--gold); margin-bottom:10px;
+  }
+  .panel h3{font-size:19px; margin-bottom:9px}
+  .panel p{margin:0; color:var(--ink-dim); font-size:15px}
+
+  /* ---------- status bar ---------- */
+  .status{
+    font-family:system-ui,sans-serif; font-size:12.5px; color:var(--ink-faint);
+    display:flex; align-items:center; gap:9px; margin-bottom:18px;
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);flex:none}
+  .dot.live{background:var(--good); box-shadow:0 0 9px var(--good)}
+  .dot.warn{background:var(--gold)}
+  .status .refresh{
+    margin-left:auto; background:none; border:1px solid var(--line-2); color:var(--ink-dim);
+    font:inherit; padding:5px 12px; border-radius:8px; cursor:pointer;
+  }
+  .status .refresh:hover{border-color:var(--gold); color:var(--gold-2)}
+  .status .refresh:disabled{opacity:.5; cursor:default; border-color:var(--line)}
+  .dot.warn{background:var(--gold); box-shadow:0 0 9px rgba(217,180,91,.6)}
+
+  /* ---------- points sheet cards ---------- */
+  .cat{margin-bottom:26px}
+  .cat-head{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--line)}
+  .cat-head h3{font-size:21px; color:var(--ink)}
+  .cat-head .note{font-family:system-ui,sans-serif; font-size:13px; color:var(--ink-faint)}
+  .cat.standard .cat-head h3{color:var(--gold-2)}
+  .cat.rotating .cat-head h3{color:var(--u)}
+  .cat.bad .cat-head h3{color:var(--bad)}
+
+  .items{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px}
+  .item{
+    display:flex; gap:14px; align-items:flex-start;
+    background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--line-2);
+    border-radius:11px; padding:14px 16px; transition:.16s;
+  }
+  .item:hover{border-color:var(--line-2); background:var(--panel-2); transform:translateY(-1px)}
+  .cat.standard .item{border-left-color:var(--gold)}
+  .cat.rotating .item{border-left-color:var(--u)}
+  .cat.bad .item{border-left-color:var(--bad)}
+  .badge{
+    flex:none; min-width:48px; text-align:center;
+    font-family:system-ui,sans-serif; font-weight:700; font-size:14px;
+    padding:6px 9px; border-radius:8px;
+    background:rgba(255,255,255,.05); border:1px solid var(--line-2); color:var(--ink);
+  }
+  .badge.pos{color:#132a1d; background:linear-gradient(180deg,#96d4ae,#5fa77e); border-color:#96d4ae}
+  .badge.neg{color:#2c100e; background:linear-gradient(180deg,#f0918a,#c85a53); border-color:#f0918a}
+  .badge.dq{color:#fff; background:linear-gradient(180deg,#8e2b26,#5c1a16); border-color:#c04a43; letter-spacing:.06em}
+  .badge.var{color:var(--gold-2); background:rgba(217,180,91,.12); border-color:var(--gold)}
+  .item .txt{font-size:14.5px; line-height:1.5; color:var(--ink)}
+  .item .txt em{color:var(--ink-faint); font-style:normal; font-size:13px; display:block; margin-top:4px}
+
+  /* ---------- points deck ---------- */
+  .deck-tools{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+  .deck-tools input{
+    flex:1 1 230px; min-width:0; font:15px/1.4 system-ui,sans-serif;
+    background:var(--panel); border:1px solid var(--line-2); color:var(--ink);
+    padding:11px 15px; border-radius:10px;
+  }
+  .deck-tools input:focus{outline:none; border-color:var(--gold)}
+  .deck-tools input::placeholder{color:var(--ink-faint)}
+  .count{font-family:system-ui,sans-serif; font-size:13px; color:var(--ink-faint); white-space:nowrap}
+
+  /* filter chips */
+  .chips{display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:none}
+  .chips .lbl{
+    font-family:system-ui,sans-serif; font-size:10.5px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--ink-faint); margin-right:2px;
+  }
+  .chip{
+    font:600 12.5px/1 system-ui,sans-serif; letter-spacing:.04em;
+    padding:8px 13px; border-radius:99px; cursor:pointer;
+    background:var(--panel); border:1px solid var(--line-2); color:var(--ink-dim);
+    transition:.15s;
+  }
+  .chip:hover{border-color:var(--gold); color:var(--gold-2)}
+  .chip:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+  .chip[aria-pressed="true"]{background:rgba(217,180,91,.16); border-color:var(--gold); color:var(--gold-2)}
+  .chip[aria-pressed="true"].c2{background:rgba(127,180,224,.16); border-color:var(--u); color:var(--u)}
+  .chip[aria-pressed="true"].c3{background:rgba(155,127,196,.18); border-color:#9b7fc4; color:#c0a6e6}
+  .chip.clear{border-style:dashed; color:var(--ink-faint)}
+  .chips .sep{width:1px; height:20px; background:var(--line-2); margin:0 4px; flex:none}
+
+  /* vertical scroll panel */
+  .deck-frame{position:relative}
+  .deck-frame:after{
+    content:""; position:absolute; left:1px; right:1px; bottom:1px; height:44px;
+    border-radius:0 0 14px 14px; pointer-events:none; opacity:0; transition:opacity .2s;
+    background:linear-gradient(180deg, rgba(10,9,16,0), rgba(10,9,16,.92));
+  }
+  .deck-frame.more:after{opacity:1}
+  .deck-scroll{
+    max-height:min(68vh, 620px); overflow-y:auto; overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+    border:1px solid var(--line); border-radius:14px;
+    background:rgba(0,0,0,.22); padding:14px;
+  }
+  .deck-scroll::-webkit-scrollbar{width:10px}
+  .deck-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,.03); border-radius:99px; margin:8px 0}
+  .deck-scroll::-webkit-scrollbar-thumb{background:var(--line-2); border-radius:99px; border:2px solid transparent; background-clip:padding-box}
+  .deck-scroll::-webkit-scrollbar-thumb:hover{background:var(--gold); background-clip:padding-box}
+  .deck-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(252px,1fr)); gap:12px}
+  .goal{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line); border-radius:12px; padding:16px;
+    display:flex; flex-direction:column; gap:11px; min-height:128px; transition:.16s;
+  }
+  .goal:hover{border-color:var(--gold); transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.4)}
+  .goal .pts{
+    align-self:flex-start; font-family:system-ui,sans-serif; font-weight:700; font-size:11.5px;
+    letter-spacing:.12em; text-transform:uppercase; padding:4px 10px; border-radius:99px;
+    background:rgba(217,180,91,.13); color:var(--gold-2); border:1px solid rgba(217,180,91,.4);
+  }
+  .goal.p2 .pts{background:rgba(127,180,224,.13); color:var(--u); border-color:rgba(127,180,224,.4)}
+  .goal.p3 .pts{background:rgba(155,127,196,.16); color:#c0a6e6; border-color:rgba(155,127,196,.45)}
+  .goal .g-txt{font-size:14.5px; line-height:1.5}
+  .goal .set{margin-top:auto; font-family:system-ui,sans-serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint)}
+  .empty{color:var(--ink-faint); font-family:system-ui,sans-serif; font-size:14px; padding:20px 2px}
+
+  /* ---------- standings ---------- */
+  .stand-tools{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+  .stand-tools input{
+    flex:1 1 230px; min-width:0; font:15px/1.4 system-ui,sans-serif;
+    background:var(--panel); border:1px solid var(--line-2); color:var(--ink);
+    padding:11px 15px; border-radius:10px;
+  }
+  .stand-tools input:focus{outline:none; border-color:var(--gold)}
+  .stand-tools input::placeholder{color:var(--ink-faint)}
+
+  .table-scroll{
+    max-height:min(60vh, 540px); overflow-y:auto; overscroll-behavior:contain;
+    border:1px solid var(--line); border-radius:14px; background:rgba(0,0,0,.22);
+  }
+  .table-scroll::-webkit-scrollbar{width:10px}
+  .table-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,.03); border-radius:99px; margin:8px 0}
+  .table-scroll::-webkit-scrollbar-thumb{background:var(--line-2); border-radius:99px; border:2px solid transparent; background-clip:padding-box}
+  .table-scroll::-webkit-scrollbar-thumb:hover{background:var(--gold); background-clip:padding-box}
+  table.stand{width:100%; border-collapse:collapse; font-family:system-ui,sans-serif}
+  table.stand th{
+    position:sticky; top:0; z-index:2;
+    background:#151220; color:var(--ink-faint);
+    font-size:11px; letter-spacing:.16em; text-transform:uppercase; font-weight:600;
+    text-align:right; padding:12px 14px; border-bottom:1px solid var(--line-2); white-space:nowrap;
+  }
+  table.stand th:nth-child(1){text-align:center; width:64px}
+  table.stand th:nth-child(2){text-align:left}
+  table.stand td{
+    padding:11px 14px; border-bottom:1px solid rgba(46,39,64,.6);
+    font-size:14.5px; color:var(--ink); text-align:right; white-space:nowrap;
+  }
+  table.stand tr:last-child td{border-bottom:none}
+  table.stand tbody tr:hover td{background:rgba(217,180,91,.05)}
+  td.rank{
+    text-align:center; color:var(--ink-faint); font-variant-numeric:tabular-nums; font-size:13.5px;
+    border-left:3px solid transparent;
+  }
+  td.who{text-align:left; font-family:"Iowan Old Style",Georgia,serif; font-size:15.5px; white-space:normal}
+  td.pts{color:var(--gold-2); font-weight:700; font-variant-numeric:tabular-nums}
+  td.raw{color:var(--ink-dim); font-variant-numeric:tabular-nums}
+  td.dim{color:var(--ink-faint); font-variant-numeric:tabular-nums}
+
+  /* top 12 — one shared gold treatment, no separate medal colours */
+  tr.qual td{background:rgba(217,180,91,.05)}
+  tr.qual:hover td{background:rgba(217,180,91,.1)}
+  tr.qual td.rank{border-left-color:rgba(217,180,91,.45); color:var(--gold-2); font-weight:700}
+  /* the cut line under 12th place */
+  tr.cut td{border-bottom:1px solid rgba(217,180,91,.55)}
+  .cut-note{
+    font-family:system-ui,sans-serif; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-faint); margin:10px 2px 0; display:flex; align-items:center; gap:9px;
+  }
+  .cut-note i{display:block; width:22px; height:1px; background:rgba(217,180,91,.55); flex:none}
+
+  details.faq{
+    border:1px solid var(--line); border-radius:11px; background:var(--panel);
+    padding:0; margin-bottom:10px; overflow:hidden;
+  }
+  details.faq summary{
+    cursor:pointer; padding:15px 18px; font-size:16px; color:var(--ink);
+    list-style:none; display:flex; align-items:center; gap:12px;
+  }
+  details.faq summary::-webkit-details-marker{display:none}
+  details.faq summary:before{content:"+"; color:var(--gold); font-size:19px; line-height:1; width:14px; flex:none}
+  details.faq[open] summary:before{content:"\2013"}
+  details.faq[open] summary{border-bottom:1px solid var(--line); color:var(--gold-2)}
+  details.faq .a{padding:15px 18px 18px 44px; color:var(--ink-dim); font-size:15px}
+
+  footer{padding:44px 0 60px; border-top:1px solid var(--line); margin-top:40px}
+  .foot-in{display:flex; gap:18px; flex-wrap:wrap; align-items:center; font-family:system-ui,sans-serif; font-size:13px; color:var(--ink-faint)}
+  .foot-in .pips{margin-left:auto}
+
+  @media (max-width:640px){
+    header.hero{padding:52px 0 40px}
+    section{padding:48px 0}
+    .deck-scroll{max-height:72vh; padding:12px}
+    .deck-grid{grid-template-columns:1fr}
+    .chips .lbl{display:none}
+    .chips .sep{display:none}
+    table.stand th.opt, table.stand td.opt{display:none}
+    table.stand th, table.stand td{padding:10px 10px}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-in">
+    <div class="brand">
+      <span class="pips"><i class="pip w"></i><i class="pip u"></i><i class="pip b"></i><i class="pip r"></i><i class="pip g"></i></span>
+      ATL B3
+    </div>
+    <button class="burger" id="burger" type="button"
+            aria-label="Open menu" aria-expanded="false" aria-controls="nav-links">
+      <span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
+    <div class="nav-links" id="nav-links">
+      <a href="#standings">Standings</a>
+      <a href="#scoring">Scoring</a>
+      <a href="#points">Points Sheet</a>
+      <a href="#deck">Points Deck</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>ATL B3<br>Commander League</h1>
+    <div class="hero-pips">
+      <i class="pip w"></i><i class="pip u"></i><i class="pip b"></i><i class="pip r"></i><i class="pip g"></i>
+    </div>
+    <div class="btn-row">
+      <a class="btn" id="lnk-sheet" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg>
+        Points Sheet
+      </a>
+      <a class="btn" id="lnk-deck" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Points Deck
+      </a>
+      <a class="btn" id="lnk-stand" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+        Standings
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ============ STANDINGS ============ -->
+<section id="standings">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Standings</h2>
+    </div>
+    <div class="status" id="st-stand">
+      <span class="dot" id="dot-stand"></span>
+      <span id="msg-stand">Loading from Google Sheets&hellip;</span>
+      <button class="refresh" onclick="loadAll(true)">Refresh</button>
+    </div>
+    <div class="stand-tools">
+      <input id="stand-search" type="search" placeholder="Find a player&hellip;" autocomplete="off">
+      <span class="count" id="stand-count"></span>
+    </div>
+    <div class="table-scroll" id="stand-out"></div>
+    <p class="cut-note"><i></i> <span id="cut-note"></span></p>
+  </div>
+</section>
+
+<!-- ============ HOW SCORING WORKS ============ -->
+<section id="scoring">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>How Scoring Works</h2>
+      <p>Two documents run the league. The <strong>Points Sheet</strong> is your scorecard for the night. The <strong>Points Deck</strong> is the pool of extra goals you can pull and claim on top of it. Both are pulled live from Google Sheets below, so what you see here is always current.</p>
+    </div>
+    <div class="grid-3">
+      <div class="panel">
+        <div class="step-n">Step One</div>
+        <h3>Play your three games</h3>
+        <p>Each league night is three matches. Grab a Points Sheet, write your name at the top, and keep it next to you at the table.</p>
+      </div>
+      <div class="panel">
+        <div class="step-n">Step Two</div>
+        <h3>Mark what you earned</h3>
+        <p>After each game, tick every line you hit. Standard points are always live. Rotating points change regularly &mdash; check them before you build. Bad Guy points subtract.</p>
+      </div>
+      <div class="panel">
+        <div class="step-n">Step Three</div>
+        <h3>Claim your deck cards</h3>
+        <p>Cards you pull from the Points Deck are extra goals to chase &mdash; worth switching decks for. Take the card back to the counter after the round to claim it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ POINTS SHEET ============ -->
+<section id="points">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>The Points Sheet</h2>
+      <p>Live from the league scoresheet. Standard points are available every night, rotating points change on a schedule, and Bad Guy points come off your total.</p>
+    </div>
+    <div class="status" id="st-points">
+      <span class="dot" id="dot-points"></span>
+      <span id="msg-points">Loading from Google Sheets&hellip;</span>
+      <button class="refresh" onclick="loadAll(true)">Refresh</button>
+    </div>
+    <div id="points-out"></div>
+  </div>
+</section>
+
+<!-- ============ POINTS DECK ============ -->
+<section id="deck">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>The Points Deck</h2>
+      <p>The full pool of claimable achievements. Filter by point value or set, search for something specific, and scroll the list for the rest.</p>
+    </div>
+    <div class="status" id="st-deck">
+      <span class="dot" id="dot-deck"></span>
+      <span id="msg-deck">Loading from Google Sheets&hellip;</span>
+    </div>
+    <div class="deck-tools">
+      <input id="deck-search" type="search" placeholder="Search goals &mdash; try &ldquo;monarch&rdquo;, &ldquo;token&rdquo;, &ldquo;graveyard&rdquo;&hellip;" autocomplete="off">
+      <div class="chips" id="deck-filters"></div>
+      <span class="count" id="deck-count"></span>
+    </div>
+    <div class="deck-frame" id="deck-frame">
+      <div class="deck-scroll" id="deck-out"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>FAQ</h2>
+    </div>
+    <details class="faq" open>
+      <summary>When and where does the league meet?</summary>
+      <div class="a">Mondays at Dice City. The event starts at 6pm, but players frequently arrive early to test decks.</div>
+    </details>
+    <details class="faq">
+      <summary>Can I join partway through a season?</summary>
+      <div class="a">Yes, you can join any time during the season. Your bottom three scores each season are dropped, so if you miss three weeks those zeroes are the ones that get dropped.</div>
+    </details>
+    <details class="faq">
+      <summary>Do I have to play the same deck every week?</summary>
+      <div class="a">No &mdash; you can switch decks between rounds, and you may want to based on the points cards you pull from the Points Deck.</div>
+    </details>
+    <details class="faq">
+      <summary>How do I claim a Points Deck goal?</summary>
+      <div class="a">Take the card back to the counter after the round.</div>
+    </details>
+    <details class="faq">
+      <summary>How often do the rotating points change?</summary>
+      <div class="a">The rotating points change as new sets are released.</div>
+    </details>
+    <details class="faq">
+      <summary>What are the prizes and how are they awarded?</summary>
+      <div class="a">TBD.</div>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-in">
+    <span>ATL B3 Commander League</span>
+    <span>&middot;</span>
+    <a id="foot-stand" href="#" target="_blank" rel="noopener">Standings</a>
+    <a id="foot-sheet" href="#" target="_blank" rel="noopener">Points Sheet</a>
+    <a id="foot-deck" href="#" target="_blank" rel="noopener">Points Deck</a>
+    <span class="pips"><i class="pip w"></i><i class="pip u"></i><i class="pip b"></i><i class="pip r"></i><i class="pip g"></i></span>
+  </div>
+</footer>
+
+<script>
+/* =====================================================================
+   CONFIG — change these two IDs if the sheets ever move.
+   ===================================================================== */
+const SHEETS = {
+  points: {
+    id:  '1lag6ja5J0y0BKLWjenUSk1jzlGQ16R4Y',
+    gid: null,
+    url: 'https://docs.google.com/spreadsheets/u/0/d/1lag6ja5J0y0BKLWjenUSk1jzlGQ16R4Y/htmlview'
+  },
+  deck: {
+    id:  '1aw-229tVDXhJ0tiFc6q-h8I7XvQtUqjaUGHI7_wUoEw',
+    gid: '0',
+    url: 'https://docs.google.com/spreadsheets/d/1aw-229tVDXhJ0tiFc6q-h8I7XvQtUqjaUGHI7_wUoEw/edit?gid=0#gid=0'
+  },
+  stand: {
+    id:  '1F_4vL45BUoZarmA7tKpOMPCnlQftCn7BmUhxptOWXOg',
+    gid: '902552986',
+    url: 'https://docs.google.com/spreadsheets/d/1F_4vL45BUoZarmA7tKpOMPCnlQftCn7BmUhxptOWXOg/edit?gid=902552986#gid=902552986'
+  }
+};
+
+['lnk-sheet','foot-sheet'].forEach(i => document.getElementById(i).href = SHEETS.points.url);
+['lnk-deck','foot-deck'].forEach(i   => document.getElementById(i).href = SHEETS.deck.url);
+['lnk-stand','foot-stand'].forEach(i => document.getElementById(i).href = SHEETS.stand.url);
+
+/* =====================================================================
+   JSONP loader for the Google Visualization (gviz) endpoint.
+   Google does not send CORS headers on gviz, so fetch() is blocked from
+   a static page. An injected script tag is not — gviz supports a custom
+   responseHandler, which makes this a normal JSONP call.
+   We also shim google.visualization.Query.setResponse in case the
+   responseHandler param is ignored.
+   ===================================================================== */
+let jsonpSeq = 0;
+
+/* gviz's default (no responseHandler) reply calls
+   google.visualization.Query.setResponse(...), so every level of that
+   namespace has to exist before we can hang a shim off it. */
+window.google = window.google || {};
+window.google.visualization = window.google.visualization || {};
+window.google.visualization.Query = window.google.visualization.Query || {};
+
+function gvizLoad(sheet, bust){
+  return new Promise((resolve, reject) => {
+    const Q  = window.google.visualization.Query;
+    const cb = 'gvizcb' + (++jsonpSeq) + '_' + Date.now();
+    const s  = document.createElement('script');
+    const prevSetResponse = Q.setResponse;
+
+    let done  = false;
+    let timer = null;
+
+    const finish = (fn, arg) => {
+      if (done) return;
+      done = true;
+      if (timer) clearTimeout(timer);
+      try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+      Q.setResponse = prevSetResponse;
+      if (s.parentNode) s.parentNode.removeChild(s);
+      fn(arg);
+    };
+
+    const handle = res => {
+      if (res && res.status === 'error'){
+        const d = (res.errors && res.errors[0]) || {};
+        finish(reject, new Error('sheet error: ' + (d.detailed_message || d.message || 'unknown')));
+      } else {
+        finish(resolve, res);
+      }
+    };
+
+    window[cb]    = handle;   // used when responseHandler is honoured
+    Q.setResponse = handle;   // used when it is ignored
+
+    timer = setTimeout(() => finish(reject, new Error('timed out after 15s')), 15000);
+    s.onerror = () => finish(reject, new Error('script blocked or sheet not public'));
+
+    let u = 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(sheet.id)
+          + '/gviz/tq?tqx=out:json;responseHandler:' + cb + '&headers=0';
+    if (sheet.gid) u += '&gid=' + encodeURIComponent(sheet.gid);
+    if (bust)      u += '&cachebust=' + Date.now();
+
+    s.src   = u;
+    s.async = true;
+    document.head.appendChild(s);
+  });
+}
+
+/* gviz rows -> plain array of string arrays */
+function toGrid(res){
+  const rows = (res && res.table && res.table.rows) || [];
+  return rows.map(r => (r.c || []).map(c => {
+    if (!c) return '';
+    const v = (c.f !== undefined && c.f !== null) ? c.f : c.v;
+    return (v === null || v === undefined) ? '' : String(v).trim();
+  }));
+}
+
+/* =====================================================================
+   PARSER 1 — the Points Sheet
+   Column B holds the text, column D holds the value.
+   Rows shaped "<Something> Points - <note>" with no value start a
+   new category.
+   ===================================================================== */
+function parsePoints(grid){
+  const cats = [];
+  let cur = null;
+  for (const r of grid){
+    const text = (r[1] || '').trim();
+    const val  = (r[3] || '').trim();
+    if (!text) continue;
+
+    const head = text.match(/^(.*?Points)\s*[-–—]\s*(.*)$/);
+    if (head && !val){
+      cur = { title: head[1], note: head[2], items: [] };
+      cats.push(cur);
+      continue;
+    }
+    if (!cur) continue;
+    cur.items.push({ text, val });
+  }
+  return cats;
+}
+
+function badgeFor(val, text){
+  if (!val){
+    // Placement row carries its scale inside the description.
+    if (/4th\s*\+?1/i.test(text)) return { cls:'var', label:'+1–+4' };
+    return { cls:'var', label:'—' };
+  }
+  if (/^dq$/i.test(val))       return { cls:'dq',  label:'DQ' };
+  if (val.startsWith('-'))     return { cls:'neg', label:val };
+  return { cls:'pos', label: val.startsWith('+') ? val : '+' + val };
+}
+
+function catClass(title){
+  const t = title.toLowerCase();
+  if (t.includes('bad guy'))  return 'bad';
+  if (t.includes('rotating')) return 'rotating';
+  return 'standard';
+}
+
+/* Split a long line into a lead sentence + supporting detail. */
+function splitText(t){
+  const m = t.match(/^([^.!?]*[.!?])\s+(.{12,})$/s);
+  if (m && m[1].length <= 130) return { lead: m[1], rest: m[2] };
+  return { lead: t, rest: '' };
+}
+
+function renderPoints(cats){
+  const host = document.getElementById('points-out');
+  if (!cats.length){ host.innerHTML = '<p class="empty">No rows found in the sheet.</p>'; return; }
+  host.innerHTML = cats.map(c => {
+    const cls = catClass(c.title);
+    const items = c.items.map(it => {
+      const b = badgeFor(it.val, it.text);
+      const p = splitText(it.text);
+      return '<div class="item">'
+           +   '<span class="badge ' + b.cls + '">' + esc(b.label) + '</span>'
+           +   '<span class="txt">' + esc(p.lead)
+           +     (p.rest ? '<em>' + esc(p.rest) + '</em>' : '')
+           +   '</span>'
+           + '</div>';
+    }).join('');
+    return '<div class="cat ' + cls + '">'
+         +   '<div class="cat-head"><h3>' + esc(c.title) + '</h3>'
+         +     (c.note ? '<span class="note">' + esc(c.note) + '</span>' : '')
+         +   '</div>'
+         +   '<div class="items">' + items + '</div>'
+         + '</div>';
+  }).join('');
+}
+
+/* =====================================================================
+   PARSER 2 — the Points Deck
+   Columns: Points | Goal | Set Specific
+   ===================================================================== */
+function parseDeck(grid){
+  const out = [];
+  for (const r of grid){
+    const pts  = (r[0] || '').trim();
+    const goal = (r[1] || '').trim();
+    const set  = (r[2] || '').trim();
+    if (!goal) continue;
+    if (/^points$/i.test(pts) && /^goals?$/i.test(goal)) continue; // header row
+    const n = parseInt(pts, 10);
+    out.push({ pts: isNaN(n) ? 1 : n, goal, set });
+  }
+  return out;
+}
+
+/* One flat list, ordered core-first then by point value, stable within. */
+function sortDeck(list){
+  return list
+    .map((g, i) => ({ g, i }))
+    .sort((a, b) =>
+      (a.g.set ? 1 : 0) - (b.g.set ? 1 : 0) ||
+      a.g.set.localeCompare(b.g.set) ||
+      a.g.pts - b.g.pts ||
+      a.i - b.i)
+    .map(x => x.g);
+}
+
+/* Filter state: null = no filter applied. */
+const filters = { pts: null, set: null };
+
+/* Chip values are encoded with sentinels because two of the real values
+   are falsy: null means "no filter" and "" means a core (non-set) goal. */
+const ALL = '__all__', CORE = '__core__';
+
+function decodeChip(kind, raw){
+  if (raw === ALL)  return null;
+  if (raw === CORE) return '';
+  return kind === 'pts' ? parseInt(raw, 10) : raw;
+}
+
+/* Chips are derived from whatever the sheet actually contains, so a new
+   point value or a new set name shows up on its own. */
+function buildFilters(){
+  const host    = document.getElementById('deck-filters');
+  const ptVals  = [...new Set(DECK.map(g => g.pts))].sort((a,b) => a-b);
+  const setVals = [...new Set(DECK.filter(g => g.set).map(g => g.set))].sort();
+
+  const chip = (label, kind, raw, cls) =>
+    '<button type="button" class="chip ' + (cls || '') + '"'
+    + ' data-kind="' + kind + '" data-val="' + esc(raw) + '"'
+    + ' aria-pressed="false">' + esc(label) + '</button>';
+
+  let h = '<span class="lbl">Value</span>' + chip('All', 'pts', ALL);
+  ptVals.forEach(p => h += chip(p + (p === 1 ? ' pt' : ' pts'), 'pts', String(p), 'c' + p));
+
+  if (setVals.length){
+    h += '<span class="sep"></span><span class="lbl">Set</span>'
+       + chip('All', 'set', ALL)
+       + chip('Core', 'set', CORE);
+    setVals.forEach(s => h += chip(s, 'set', s));
+  }
+
+  h += '<button type="button" class="chip clear" id="deck-clear" hidden>Clear</button>';
+  host.innerHTML = h;
+
+  host.querySelectorAll('.chip[data-kind]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const kind = btn.dataset.kind;
+      let val = decodeChip(kind, btn.dataset.val);
+      // Clicking the already-active chip turns that filter back off.
+      if (val !== null && btn.getAttribute('aria-pressed') === 'true') val = null;
+      filters[kind] = val;
+      renderDeck();
+    });
+  });
+
+  document.getElementById('deck-clear').addEventListener('click', () => {
+    filters.pts = null;
+    filters.set = null;
+    document.getElementById('deck-search').value = '';
+    renderDeck();
+  });
+
+  syncChips();
+}
+
+function syncChips(){
+  document.querySelectorAll('#deck-filters .chip[data-kind]').forEach(btn => {
+    const kind = btn.dataset.kind;
+    btn.setAttribute('aria-pressed',
+      filters[kind] === decodeChip(kind, btn.dataset.val) ? 'true' : 'false');
+  });
+  const clear = document.getElementById('deck-clear');
+  if (clear){
+    clear.hidden = filters.pts === null && filters.set === null &&
+                   document.getElementById('deck-search').value.trim() === '';
+  }
+}
+
+function renderDeck(){
+  const q    = document.getElementById('deck-search').value.trim().toLowerCase();
+  const host = document.getElementById('deck-out');
+
+  const list = sortDeck(DECK.filter(g =>
+    (filters.pts === null || g.pts === filters.pts) &&
+    (filters.set === null || g.set === filters.set) &&
+    (!q || g.goal.toLowerCase().includes(q) || g.set.toLowerCase().includes(q))
+  ));
+
+  document.getElementById('deck-count').textContent =
+    list.length === DECK.length
+      ? DECK.length + ' goals'
+      : list.length + ' of ' + DECK.length + ' goals';
+
+  if (!list.length){
+    host.innerHTML = '<p class="empty">No goals match those filters.</p>';
+  } else {
+    host.innerHTML = '<div class="deck-grid">' + list.map(g =>
+      '<div class="goal p' + g.pts + '">'
+      + '<span class="pts">' + g.pts + (g.pts === 1 ? ' pt' : ' pts') + '</span>'
+      + '<span class="g-txt">' + esc(g.goal) + '</span>'
+      + (g.set ? '<span class="set">' + esc(g.set) + '</span>' : '')
+      + '</div>'
+    ).join('') + '</div>';
+  }
+
+  host.scrollTop = 0;
+  syncChips();
+  updateFade();
+}
+
+/* =====================================================================
+   PARSER 3 — Standings
+   A first name | B last name | C points total (multiplier applied)
+   D raw points | E weeks played | F multiplier | G.. weekly scores
+   The sheet only starts labelling at "Week 3" (column I), so the two
+   unlabelled score columns before it are Week 1 and Week 2.
+   ===================================================================== */
+function num(v){
+  if (v === null || v === undefined) return null;
+  const s = String(v).replace(/[^0-9.\-]/g, '');
+  if (s === '' || s === '-' || s === '.') return null;
+  const n = Number(s);
+  return isFinite(n) ? n : null;
+}
+
+const WEEK_COL = 6;   // column G — first weekly score
+const TOP_N    = 12;  // how many places get the highlight treatment
+
+function weekLabels(grid){
+  const h = grid[0] || [];
+  const out = [];
+  for (let i = WEEK_COL; i < h.length; i++){
+    const l = (h[i] || '').trim();
+    out.push(l || ('Week ' + (i - WEEK_COL + 1)));
+  }
+  return out;
+}
+
+function parseStandings(grid){
+  const labels = weekLabels(grid);
+  const rows = [];
+
+  for (const r of grid){
+    const first = (r[0] || '').trim();
+    const last  = (r[1] || '').trim();
+    if (!first || /^name$/i.test(first)) continue;   // header / blank
+    const total = num(r[2]);
+    if (total === null) continue;                    // not a player row
+
+    const weekly = [];
+    for (let i = WEEK_COL; i < r.length; i++){
+      const v = num(r[i]);
+      if (v !== null) weekly.push({ label: labels[i - WEEK_COL] || ('Week ' + (i - WEEK_COL + 1)), val: v });
+    }
+
+    rows.push({
+      name:   first + (last ? ' ' + (last.length === 1 ? last + '.' : last) : ''),
+      total,
+      raw:    num(r[3]),
+      played: num(r[4]),
+      mult:   num(r[5]),
+      weekly
+    });
+  }
+
+  rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+
+  // Standard competition ranking: equal scores share a place, then skip.
+  let rank = 0, prev = null;
+  rows.forEach((p, i) => {
+    if (p.total !== prev){ rank = i + 1; prev = p.total; }
+    p.rank = rank;
+  });
+  // Position in the sorted list — always unique, so exactly TOP_N rows get
+  // highlighted and exactly three get medals, even when scores are tied.
+  rows.forEach((p, i) => p.pos = i + 1);
+
+  // Flag shared places so the table can show "T-4" style ranks.
+  const counts = {};
+  rows.forEach(p => counts[p.rank] = (counts[p.rank] || 0) + 1);
+  rows.forEach(p => p.tied = counts[p.rank] > 1);
+
+  return rows;
+}
+
+function renderStandings(){
+  const q    = document.getElementById('stand-search').value.trim().toLowerCase();
+  const list = q ? STAND.filter(p => p.name.toLowerCase().includes(q)) : STAND;
+
+  document.getElementById('stand-count').textContent =
+    list.length === STAND.length
+      ? STAND.length + ' players'
+      : list.length + ' of ' + STAND.length + ' players';
+
+  const note = document.getElementById('cut-note');
+  if (note) note.textContent = 'Gold rows are the current top ' + TOP_N;
+
+  const host = document.getElementById('stand-out');
+  if (!list.length){
+    host.innerHTML = '<p class="empty" style="padding:20px">No players match &ldquo;' + esc(q) + '&rdquo;.</p>';
+    return;
+  }
+
+  // The cut line goes under the last qualifying row, but only when the
+  // list is unfiltered — otherwise it would sit in an arbitrary place.
+  const lastQual = q ? -1 : list.reduce((acc, p, i) => p.pos <= TOP_N ? i : acc, -1);
+
+  host.innerHTML =
+      '<table class="stand"><thead><tr>'
+    +   '<th>#</th><th>Player</th><th>Points</th>'
+    +   '<th>Raw</th><th class="opt">Mult</th><th>Entries</th>'
+    + '</tr></thead><tbody>'
+    + list.map((p, i) => {
+        const cls = [];
+        if (p.pos <= TOP_N) cls.push('qual');
+        if (i === lastQual) cls.push('cut');
+        return '<tr' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + '>'
+          + '<td class="rank">' + (p.tied ? 'T-' : '') + p.rank + '</td>'
+          + '<td class="who">' + esc(p.name) + '</td>'
+          + '<td class="pts">' + p.total + '</td>'
+          + '<td class="raw">' + (p.raw !== null ? p.raw : '&mdash;') + '</td>'
+          + '<td class="dim opt">' + (p.mult !== null ? '&times;' + p.mult : '&mdash;') + '</td>'
+          + '<td class="dim">' + (p.played !== null ? p.played : '&mdash;') + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>';
+}
+
+/* Fade at the bottom of the panel, only while there's more to scroll to. */
+function updateFade(){
+  const host  = document.getElementById('deck-out');
+  const frame = document.getElementById('deck-frame');
+  if (!host || !frame) return;
+  const more = host.scrollHeight - host.clientHeight - host.scrollTop > 12;
+  frame.classList.toggle('more', more);
+}
+
+/* =====================================================================
+   Fallback snapshots — used only if Google can't be reached, so the
+   page is never blank. Refreshed whenever you re-export the sheets.
+   ===================================================================== */
+const FALLBACK_POINTS = [
+["","Standard Points - Available every League night.","",""],
+["","Placement this match. Do not use if more than one player is alive at end of match. If multiple players are eliminated simultaneously they share the lowest available ranking. 4th +1, 3rd +2, 2nd +3, 1st +4.","",""],
+["","Game ends in draw. More than one player alive at round's end. 1pt each.","","+1"],
+["","Win without playing a Game Changer or a T1 Sol Ring.","","+1"],
+["","Win the game or eliminate a player with alternate win condition. Poison, commander damage, milling, “win the game” cards, etc. No stacking, only happens once a match. No points for Lab Man (or any other empty library) wins.","","+1"],
+["","Remove or counter 2+ permanents/spells in a game with single target removal/counter.","","+1"],
+["","Stop a win attempt. No stacking, only happens once per match. Fog a lethal swing, counter a game-winning spell. Be critical and realistic.","","+1"],
+["","Protect another player from being killed. No stacking, only happens once/game.","","+1"],
+["","You cast your commander from the command zone four or more times. Excludes infinites that involve recasting your commander from command zone like Prossh. DOES NOT INCLUDE YURIKO. GTFO WITH THAT NONSENSE.","","+1"],
+["","Have a commander from the most recent Universes Beyond or Universes Within set.","","+1"],
+["","Be in seat four and lose the game. Or play in a three-player pod.","","+1"],
+["","Coolest card played. All players vote for the card they thought was the most interesting, unique, or funniest card played during the match. The player with the most votes wins. If consensus cannot be reached, no one gets the point.","","+1"],
+["","Rotating Points - These will change regularly.","",""],
+["","Cast 2 spells with Convoke, Improvise, Waterbending, or Teamwork.","","+1"],
+["","Control five or more unique non-token creature members of a team at the same time. (ex. the Gatewatch, the Fellowship of the Ring, the Avengers, the crew of the Weatherlight)","","+1"],
+["","Cast a Prepared or Adventure spell three or more times.","","+1"],
+["","Lightning Bolted! Kill a player with a direct damage instant or sorcery when they are at 3 or less life","","+1"],
+["","Lightning Bolt range! Win the game or eliminate another player while your own remaining life total is three or less","","+1"],
+["","Bad Guy Points - Don't do this stuff and you won't get any.","",""],
+["","Win the game before turn 6.","","-4"],
+["","Control 4+ stax pieces at one time.","","-2"],
+["","Win with an infinite combo","","-1"],
+["","Play with a commander or commander pair on the front page of edhtop16.com","","-1"],
+["","Presenting an infinite mana/draw loop and failing to end the game immediately.","","-6"],
+["","Mass Land Denial.","","DQ"],
+["","Play a banned card.","","DQ"],
+["","Acted like a jerk. You know what you did. (Spite scooped, didn’t pay attention and tried to rewind multiple actions, got salty with other players for interacting, playing on phone, insulted another player’s card choices)","","-2"],
+["","Chain Extra Turns.","","DQ"]
+];
+
+const FALLBACK_DECK = [
+[1,"Win a game with your commander never leaving the command zone.",""],
+[1,"Control 10 or more lands at once.",""],
+[1,"Attack with five or more creatures at the same time.",""],
+[1,"Control a permanent of each color (WUBRG) at the same time.",""],
+[1,"Gain 30 or more life in a single game.",""],
+[1,"Have 10 or more cards in your hand at any point",""],
+[1,"Control 5 or more token creatures at once.",""],
+[1,"Draw 5 or more cards from a single spell or ability.",""],
+[1,"Cast a spell with mana value 10 or greater.",""],
+[1,"Deal 20 or more combat damage to a single opponent in one combat.",""],
+[1,"Control 3 or more planeswalkers at once.",""],
+[1,"Control a creature with 10 or more +1/+1 counters on it.",""],
+[1,"Cast four or more spells in a single turn.",""],
+[1,"Control 20 or more permanents at once.",""],
+[1,"Cast a spell with an X in its mana cost with X of 8 or greater.",""],
+[1,"Control a creature enchanted or equipped by 3 or more Auras/Equipment.",""],
+[1,"Win a game where you were at 10 or fewer life at some point during it.",""],
+[1,"Have every creature you control share a single creature type (minimum 5 creatures).",""],
+[1,"Win a game as the last player still holding cards in hand (all opponents hellbent at the finish).",""],
+[1,"Control a creature with power 10 or greater.",""],
+[1,"Control 5 or more artifacts at once.",""],
+[1,"Control 5 or more enchantments at once.",""],
+[1,"Control 3 or more creatures with power 5 or greater at once.",""],
+[1,"Deal combat damage to each opponent in a single combat.",""],
+[1,"Control a creature that has both flying and trample.",""],
+[1,"Control an Equipment attached to a creature and an Aura attached to a creature at the same time.",""],
+[1,"Win a game in which your commander dealt no combat damage the entire game.",""],
+[1,"Deal the first combat damage to a player in the game (“first blood”).",""],
+[1,"Become the monarch.",""],
+[1,"Cast a spell from exile (foretell, adventure, cast-from-exile effect, or an exiled card).",""],
+[1,"Cast a spell with an alternative cost",""],
+[1,"Have a spell you cast trigger cascade, and cast the cascaded spell.",""],
+[1,"Put a nonland permanent onto the battlefield without casting it.",""],
+[1,"Reanimate a creature card from any graveyard (return it to the battlefield from a graveyard).",""],
+[1,"Have 20 or more cards in your graveyard at once.",""],
+[1,"Mill yourself 5 or more cards at once from a single spell or effect",""],
+[1,"Cast a spell during each of your first three turns of the game.",""],
+[1,"Have 5 or more devotion to a single color (count colored pips on your permanents).",""],
+[1,"Control a creature with menace, or with an evasion keyword, that deals combat damage unblocked.",""],
+[1,"Cast a creature and give it haste, then attack with it the same turn it entered.",""],
+[1,"Cast a spell with flashback, escape, disturb, or a similar keyword that casts it from your graveyard.",""],
+[1,"Sacrifice three or more permanents in a single turn (to any costs or abilities).",""],
+[1,"Win a coin flip or die roll for an in-game effect (a card made you flip/roll, and you got the good result).",""],
+[1,"Goad a creature (force it to attack).",""],
+[1,"Give an opponent something beneficial via one of your cards — cards, mana, life, or a token (“group hug” gift).",""],
+[1,"Get a creature through unblocked using an obscure evasion keyword: horsemanship, shadow, fear, or intimidate.",""],
+[1,"Control a nontoken clone that copies another creature on the battlefield (a permanent with the same name as something else in play).",""],
+[1,"Proliferate.",""],
+[2,"Control a permanent of each color, a token, a planeswalker, and 10+ lands all at the same time.",""],
+[2,"Attack with ten or more creatures at the same time.",""],
+[2,"Control a creature with power 40 or greater.",""],
+[2,"Reduce a single opponent from 40 life to 0 in one turn through combat damage only.",""],
+[2,"Control 30 or more permanents at once.",""],
+[2,"Earn points from at least one 1-point and one 2-point goal in the same league night.",""],
+[2,"Be the monarch at the beginning of your end step (successfully drawing the monarch card) in three separate turns of one game.",""],
+[2,"Steal the monarch from another player via combat damage.",""],
+[2,"Have 10 or more devotion to a single color at once.",""],
+[2,"Have more cards in your graveyard than in your library at the end of a turn.",""],
+[2,"Reanimate an opponent's creature and attack with it.",""],
+[2,"Control 15 or more lands at once.",""],
+[2,"Cast three or more spells from exile in a single game.",""],
+[2,"Return five or more permanents from graveyards to the battlefield over one game.",""],
+[2,"Win a game in which you were the monarch at the moment of victory.",""],
+[2,"Eliminate two players in the same turn.",""],
+[2,"Cast a spell with an X in its mana cost with X of 12 or greater.",""],
+[2,"Deal combat damage to all opponents in a single combat",""],
+[2,"Have 60 or more life at any point in a game.",""],
+[2,"Control 5 or more permanents with counters on them at once.",""],
+[2,"Cast a spell that forces every player to do the same thing symmetrically (mass chaos / group effect — e.g. everyone draws, everyone sacrifices, everyone shuffles in and redraws).",""],
+[2,"Ninjutsu a creature into play (return an unblocked attacker and put a Ninja onto the battlefield attacking), or otherwise swap an attacker for another creature mid-combat.",""],
+[2,"Control one of each “artifact-with-a-purpose” token at the same time: a Treasure, a Clue, and a Food (minimum three different named token types).",""],
+[2,"Resolve a vote (a “will of the council” / “council's dilemma” card where players vote), regardless of the outcome.",""],
+[2,"Control a creature with three or more different keyword abilities on it at once (printed or granted).",""],
+[2,"Control the only nonland permanent on the battlefield at the end of a turn (every other player's board is empty of nonland permanents — “the cheese stands alone”).",""],
+[3,"Win a game in which every creature you controlled at the moment of victory was a token.",""],
+[3,"Control, at the same time, at least one creature with each of these five keywords across your board: flying, trample, deathtouch, lifelink, and vigilance.",""],
+[3,"Win a game in which you never attacked with a creature the entire game.",""],
+[3,"Win a game the turn after being at 5 or fewer life at the start of that turn.",""],
+[3,"Control five permanents that each tap for one distinct color of WUBRG (all five colors represented).",""],
+[3,"Control 10 or more legendary permanents at once.",""],
+[3,"Win a game in which, at the moment of victory, you controlled zero lands.",""],
+[3,"Win a game while at exactly 1 life.",""],
+[3,"Win a game in which the winning damage or effect came from an opponent's own permanent that you controlled or redirected.",""],
+[3,"Win a game on an opponent's turn (you meet a win condition or deliver lethal during a turn that is not yours).",""],
+[1,"Control a Storied board state. Control a Legendary Artifact, Legendary Creature, and Saga at the same time","Hobbit"],
+[1,"Control 5 or more Halfling creatures (Changelings don't count)","Hobbit"],
+[1,"Control 5 or more Dwarf creatures (Changelings don't count)","Hobbit"],
+[1,"Go on 3 or more Adventures (cast three adventure type spells)","Hobbit"],
+[3,"Master of Stories. Control 5 or more sagas at once","Hobbit"],
+[1,"As foretold... Attach a LOTR/Hobbit equipment to the appropriate character (Sting to Bilbo/Frodo/Sam, Orcrist to Thorin, Wizard's Staff to Gandalf, etc)","Hobbit"],
+[1,"Create a horde.. Control 10 or more Treasures","Hobbit"],
+[1,"There and back again... Cast an adventure spell and then later cast it out of exile as a permanent","Hobbit"],
+[2,"Throw it into the fire... Exile or Destroy a non-token Legendary Artifact you control","Hobbit"],
+[1,"Battle of five armies... in a single combat phase, attack with five creatures who share no creature types with each other","Hobbit"],
+[1,"Assemble a host... control 10 or more non-token creatures who share a Creature Type","Hobbit"],
+[1,"Recruitment Center... control 20 or more 1/1 token creatures","Hobbit"],
+[1,"Arrive Precisely When You Mean To... Cast your commander for the first time on Turn 1 or Turn 6","Hobbit"]
+].map(r => [String(r[0]), r[1], r[2]]);
+
+const FALLBACK_STAND = [
+["Name","Column 1","","","","","","","Week 3","Week 4","Week 5","Week 6","Week 7","Week 8","Week 9","Week 10","Week 11","LCQ"],
+["Will","B",77,51,2,1.5,26,25],
+["Deandre","",63,42,2,1.5,20,22],
+["Damani","",56,37,2,1.5,22,15],
+["Brandon","B",50,33,2,1.5,16,17],
+["David","S",48,32,2,1.5,15,17],
+["Gavin","",48,32,2,1.5,16,16],
+["Jesus","U",47,31,2,1.5,13,18],
+["Mattice","O",45,30,2,1.5,13,17],
+["Wyatt","B",42,28,2,1.5,17,11],
+["Cody","W",41,27,2,1.5,14,13],
+["Deniz","B",38,25,2,1.5,12,13],
+["Anne","J",36,24,2,1.5,11,13],
+["Grant","R",36,24,2,1.5,10,14],
+["Matt","R",36,24,2,1.5,8,16],
+["Alton","B",35,23,1,1.5,23,""],
+["Basil","A",33,22,2,1.5,9,13],
+["Jose","M",30,20,2,1.5,12,8],
+["Preston","",30,20,1,1.5,"",20],
+["Aldon","R",29,19,2,1.5,5,14],
+["Chris","H",27,18,1,1.5,18,""],
+["Ethan","G",26,17,1,1.5,"",17],
+["Andrew","M",24,16,1,1.5,16,""],
+["Winston","S",24,16,2,1.5,9,7],
+["Brian","E",24,16,1,1.5,"",16],
+["Clancy","JM",21,14,1,1.5,"",14],
+["Isreal","M",20,13,1,1.5,13,""],
+["Benny","K",18,12,1,1.5,12,""],
+["Price","C",18,12,1,1.5,12,""],
+["Avi","N",18,12,1,1.5,"",12],
+["Gil","B",17,11,1,1.5,11,""],
+["Kelsey","W",17,11,1,1.5,11,""],
+["Trung","LP",15,10,1,1.5,"",10],
+["Lynx","",14,9,1,1.5,"",9],
+["Keven","L",8,5,1,1.5,"",5]
+].map(r => r.map(c => String(c)));
+
+/* ===================================================================== */
+let DECK  = [];
+let STAND = [];
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function setStatus(which, state, msg){
+  document.getElementById('dot-' + which).className = 'dot ' + state;
+  document.getElementById('msg-' + which).textContent = msg;
+}
+
+function stamp(){
+  return new Date().toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+}
+
+let loading = false;
+
+async function loadAll(bust){
+  if (loading) return;
+  loading = true;
+
+  const btns = [...document.querySelectorAll('.status .refresh')];
+  btns.forEach(b => { b.disabled = true; b.textContent = 'Refreshing…'; });
+
+  setStatus('stand','',  'Loading from Google Sheets…');
+  setStatus('points','', 'Loading from Google Sheets…');
+  setStatus('deck','',   'Loading from Google Sheets…');
+
+  // Standings
+  try{
+    const grid = toGrid(await gvizLoad(SHEETS.stand, bust));
+    const list = parseStandings(grid);
+    if (!list.length) throw new Error('sheet returned no player rows');
+    STAND = list;
+    renderStandings();
+    setStatus('stand','live','Live from Google Sheets · ' + STAND.length + ' players · loaded ' + stamp());
+  }catch(e){
+    console.error('[standings]', e);
+    STAND = parseStandings(FALLBACK_STAND);
+    renderStandings();
+    setStatus('stand','warn','Saved copy (' + stamp() + ') — ' + e.message);
+  }
+
+  // Points sheet
+  try{
+    const grid = toGrid(await gvizLoad(SHEETS.points, bust));
+    const cats = parsePoints(grid);
+    if (!cats.length) throw new Error('sheet returned no usable rows');
+    renderPoints(cats);
+    setStatus('points','live','Live from Google Sheets · loaded ' + stamp());
+  }catch(e){
+    console.error('[points sheet]', e);
+    renderPoints(parsePoints(FALLBACK_POINTS));
+    setStatus('points','warn','Saved copy (' + stamp() + ') — ' + e.message);
+  }
+
+  // Points deck
+  try{
+    const grid = toGrid(await gvizLoad(SHEETS.deck, bust));
+    const list = parseDeck(grid);
+    if (!list.length) throw new Error('sheet returned no usable rows');
+    DECK = list;
+    buildFilters();
+    renderDeck();
+    setStatus('deck','live','Live from Google Sheets · ' + DECK.length + ' goals · loaded ' + stamp());
+  }catch(e){
+    console.error('[points deck]', e);
+    DECK = parseDeck(FALLBACK_DECK);
+    buildFilters();
+    renderDeck();
+    setStatus('deck','warn','Saved copy (' + stamp() + ') — ' + e.message);
+  }
+
+  btns.forEach(b => { b.disabled = false; b.textContent = 'Refresh'; });
+  loading = false;
+}
+
+let t;
+document.getElementById('deck-search').addEventListener('input', () => {
+  clearTimeout(t);
+  t = setTimeout(renderDeck, 120);
+});
+
+document.getElementById('deck-out').addEventListener('scroll', updateFade, { passive: true });
+window.addEventListener('resize', updateFade);
+
+let ts;
+document.getElementById('stand-search').addEventListener('input', () => {
+  clearTimeout(ts);
+  ts = setTimeout(renderStandings, 120);
+});
+
+/* =====================================================================
+   Nav: full link row at the top of the page, hamburger once you scroll.
+   Narrow screens stay collapsed at any scroll position.
+   One set of links in the DOM — CSS just re-presents them as a panel.
+   ===================================================================== */
+(function initNav(){
+  const nav      = document.querySelector('nav');
+  const burger   = document.getElementById('burger');
+  const narrow   = window.matchMedia('(max-width: 760px)');
+  const COLLAPSE_AT = 90;   // px scrolled before the menu folds up
+
+  function setOpen(open){
+    nav.classList.toggle('open', open);
+    burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  }
+
+  function syncNav(){
+    const collapsed = narrow.matches || window.scrollY > COLLAPSE_AT;
+    nav.classList.toggle('collapsed', collapsed);
+    if (!collapsed) setOpen(false);   // never leave a hidden panel "open"
+  }
+
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { syncNav(); ticking = false; });
+  }, { passive: true });
+
+  window.addEventListener('resize', syncNav);
+  if (narrow.addEventListener) narrow.addEventListener('change', syncNav);
+  else if (narrow.addListener)  narrow.addListener(syncNav);   // older Safari
+
+  burger.addEventListener('click', e => {
+    e.stopPropagation();
+    setOpen(!nav.classList.contains('open'));
+  });
+
+  // Close on link tap, outside click, or Escape.
+  document.querySelectorAll('#nav-links a').forEach(a =>
+    a.addEventListener('click', () => setOpen(false)));
+
+  document.addEventListener('click', e => {
+    if (nav.classList.contains('open') && !nav.contains(e.target)) setOpen(false);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && nav.classList.contains('open')){
+      setOpen(false);
+      burger.focus();
+    }
+  });
+
+  syncNav();
+})();
+
+loadAll(false);
+</script>
+</body>
+</html>
