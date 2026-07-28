@@ -217,9 +217,11 @@
   .deck-tools input:focus{outline:none; border-color:var(--gold)}
   .deck-tools input::placeholder{color:var(--ink-faint)}
   .count{font-family:system-ui,sans-serif; font-size:13px; color:var(--ink-faint); white-space:nowrap}
+  .deck-tools .count, .stand-tools .count{margin-left:auto}
 
-  /* filter chips */
-  .chips{display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:none}
+  /* filter chips — must be shrinkable (flex:none would keep max-content
+     width, so the group could never wrap and would overflow to the right) */
+  .chips{display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:0 1 auto; min-width:0}
   .chips .lbl{
     font-family:system-ui,sans-serif; font-size:10.5px; letter-spacing:.16em;
     text-transform:uppercase; color:var(--ink-faint); margin-right:2px;
@@ -351,8 +353,16 @@
     section{padding:48px 0}
     .deck-scroll{max-height:72vh; padding:12px}
     .deck-grid{grid-template-columns:1fr}
-    .chips .lbl{display:none}
+    /* search, chips and count each take their own full-width row */
+    .deck-tools, .stand-tools{gap:8px}
+    .deck-tools input, .stand-tools input{flex:1 1 100%}
+    .chips{flex:1 1 100%; justify-content:flex-start}
+    .deck-tools .count, .stand-tools .count{margin-left:0; flex:1 1 100%}
+    /* each group label starts its own line, so the two "All" chips stay
+       distinguishable now that the separator is hidden */
+    .chips .lbl{flex:1 1 100%; margin:4px 0 0}
     .chips .sep{display:none}
+    .chip{padding:7px 12px; font-size:12px}
     table.stand th.opt, table.stand td.opt{display:none}
     table.stand th, table.stand td{padding:10px 10px}
   }
