@@ -315,7 +315,6 @@
   }
   td.who{text-align:left; font-family:"Iowan Old Style",Georgia,serif; font-size:15.5px; white-space:normal}
   td.pts{color:var(--gold-2); font-weight:700; font-variant-numeric:tabular-nums}
-  td.raw{color:var(--ink-dim); font-variant-numeric:tabular-nums}
   td.dim{color:var(--ink-faint); font-variant-numeric:tabular-nums}
 
   /* top 12 — one shared gold treatment, no separate medal colours */
@@ -363,7 +362,6 @@
     .chips .lbl{flex:1 1 100%; margin:4px 0 0}
     .chips .sep{display:none}
     .chip{padding:7px 12px; font-size:12px}
-    table.stand th.opt, table.stand td.opt{display:none}
     table.stand th, table.stand td{padding:10px 10px}
   }
 </style>
@@ -558,9 +556,9 @@ const SHEETS = {
     url: 'https://docs.google.com/spreadsheets/d/1aw-229tVDXhJ0tiFc6q-h8I7XvQtUqjaUGHI7_wUoEw/edit?gid=0#gid=0'
   },
   stand: {
-    id:  '1F_4vL45BUoZarmA7tKpOMPCnlQftCn7BmUhxptOWXOg',
-    gid: '902552986',
-    url: 'https://docs.google.com/spreadsheets/d/1F_4vL45BUoZarmA7tKpOMPCnlQftCn7BmUhxptOWXOg/edit?gid=902552986#gid=902552986'
+    id:  '1sszrZfmuoPLWId1jezOV5tAaLNXgXYWnT7orTW08Cs4',
+    gid: null,
+    url: 'https://docs.google.com/spreadsheets/d/1sszrZfmuoPLWId1jezOV5tAaLNXgXYWnT7orTW08Cs4/edit?usp=sharing'
   }
 };
 
@@ -852,10 +850,11 @@ function renderDeck(){
 
 /* =====================================================================
    PARSER 3 — Standings
-   A first name | B last name | C points total (multiplier applied)
-   D raw points | E weeks played | F multiplier | G.. weekly scores
-   The sheet only starts labelling at "Week 3" (column I), so the two
+   A first name | B last name | C points total | D raw points
+   E entries | F.. weekly scores
+   The sheet only starts labelling at "Week 3" (column H), so the two
    unlabelled score columns before it are Week 1 and Week 2.
+   Note: there is no longer a multiplier column.
    ===================================================================== */
 function num(v){
   if (v === null || v === undefined) return null;
@@ -865,7 +864,7 @@ function num(v){
   return isFinite(n) ? n : null;
 }
 
-const WEEK_COL = 6;   // column G — first weekly score
+const WEEK_COL = 5;   // column F — first weekly score
 const TOP_N    = 12;  // how many places get the highlight treatment
 
 function weekLabels(grid){
@@ -900,12 +899,13 @@ function parseStandings(grid){
       total,
       raw:    num(r[3]),
       played: num(r[4]),
-      mult:   num(r[5]),
       weekly
     });
   }
 
-  rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  // Sort is stable, so players on equal points keep the sheet's row order.
+  // That matters: the top-12 cut is decided by list position.
+  rows.sort((a, b) => b.total - a.total);
 
   // Standard competition ranking: equal scores share a place, then skip.
   let rank = 0, prev = null;
@@ -950,7 +950,7 @@ function renderStandings(){
   host.innerHTML =
       '<table class="stand"><thead><tr>'
     +   '<th>#</th><th>Player</th><th>Points</th>'
-    +   '<th>Raw</th><th class="opt">Mult</th><th>Entries</th>'
+    +   '<th>Entries</th>'
     + '</tr></thead><tbody>'
     + list.map((p, i) => {
         const cls = [];
@@ -960,8 +960,6 @@ function renderStandings(){
           + '<td class="rank">' + (p.tied ? 'T-' : '') + p.rank + '</td>'
           + '<td class="who">' + esc(p.name) + '</td>'
           + '<td class="pts">' + p.total + '</td>'
-          + '<td class="raw">' + (p.raw !== null ? p.raw : '&mdash;') + '</td>'
-          + '<td class="dim opt">' + (p.mult !== null ? '&times;' + p.mult : '&mdash;') + '</td>'
           + '<td class="dim">' + (p.played !== null ? p.played : '&mdash;') + '</td>'
           + '</tr>';
       }).join('')
@@ -1113,41 +1111,41 @@ const FALLBACK_DECK = [
 ].map(r => [String(r[0]), r[1], r[2]]);
 
 const FALLBACK_STAND = [
-["Name","Column 1","","","","","","","Week 3","Week 4","Week 5","Week 6","Week 7","Week 8","Week 9","Week 10","Week 11","LCQ"],
-["Will","B",77,51,2,1.5,26,25],
-["Deandre","",63,42,2,1.5,20,22],
-["Damani","",56,37,2,1.5,22,15],
-["Brandon","B",50,33,2,1.5,16,17],
-["David","S",48,32,2,1.5,15,17],
-["Gavin","",48,32,2,1.5,16,16],
-["Jesus","U",47,31,2,1.5,13,18],
-["Mattice","O",45,30,2,1.5,13,17],
-["Wyatt","B",42,28,2,1.5,17,11],
-["Cody","W",41,27,2,1.5,14,13],
-["Deniz","B",38,25,2,1.5,12,13],
-["Anne","J",36,24,2,1.5,11,13],
-["Grant","R",36,24,2,1.5,10,14],
-["Matt","R",36,24,2,1.5,8,16],
-["Alton","B",35,23,1,1.5,23,""],
-["Basil","A",33,22,2,1.5,9,13],
-["Jose","M",30,20,2,1.5,12,8],
-["Preston","",30,20,1,1.5,"",20],
-["Aldon","R",29,19,2,1.5,5,14],
-["Chris","H",27,18,1,1.5,18,""],
-["Ethan","G",26,17,1,1.5,"",17],
-["Andrew","M",24,16,1,1.5,16,""],
-["Winston","S",24,16,2,1.5,9,7],
-["Brian","E",24,16,1,1.5,"",16],
-["Clancy","JM",21,14,1,1.5,"",14],
-["Isreal","M",20,13,1,1.5,13,""],
-["Benny","K",18,12,1,1.5,12,""],
-["Price","C",18,12,1,1.5,12,""],
-["Avi","N",18,12,1,1.5,"",12],
-["Gil","B",17,11,1,1.5,11,""],
-["Kelsey","W",17,11,1,1.5,11,""],
-["Trung","LP",15,10,1,1.5,"",10],
-["Lynx","",14,9,1,1.5,"",9],
-["Keven","L",8,5,1,1.5,"",5]
+["Name","Column 1","","","","","","Week 3","Week 4","Week 5","Week 6","Week 7","Week 8","Week 9","Week 10","Week 11","LCQ"],
+["Will","B",51,51,2,26,25],
+["Deantre","",42,42,2,20,22],
+["Damani","",37,37,2,22,15],
+["Brandon","B",33,33,2,16,17],
+["David","S",32,32,2,15,17],
+["Gavin","L",32,32,2,16,16],
+["Jesus","U",31,31,2,13,18],
+["Mattice","O",30,30,2,13,17],
+["Wyatt","B",28,28,2,17,11],
+["Cody","W",27,27,2,14,13],
+["Deniz","B",25,25,2,12,13],
+["Anne","J",24,24,2,11,13],
+["Grant","R",24,24,2,10,14],
+["Matt","R",24,24,2,8,16],
+["Alton","B",23,23,1,23,""],
+["Basil","A",22,22,2,9,13],
+["Jose","M",20,20,2,12,8],
+["Preston","",20,20,1,"",20],
+["Aldon","R",19,19,2,5,14],
+["Chris","H",18,18,1,18,""],
+["Ethan","G",17,17,1,"",17],
+["Andrew","M",16,16,1,16,""],
+["Winston","S",16,16,2,9,7],
+["Brian","E",16,16,1,"",16],
+["Clancy","JM",14,14,1,"",14],
+["Isreal","M",13,13,1,13,""],
+["Benny","K",12,12,1,12,""],
+["Price","C",12,12,1,12,""],
+["Avi","N",12,12,1,"",12],
+["Gil","B",11,11,1,11,""],
+["Kelsey","W",11,11,1,11,""],
+["Trung","LP",10,10,1,"",10],
+["Lynx","",9,9,1,"",9],
+["Keven","L",5,5,1,"",5]
 ].map(r => r.map(c => String(c)));
 
 /* ===================================================================== */
