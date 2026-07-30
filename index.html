@@ -65,6 +65,12 @@
     padding:7px 11px; border-radius:8px; font-family:system-ui,sans-serif;
   }
   .nav-links a:hover{color:var(--gold-2); background:rgba(217,180,91,.09)}
+  /* leaves the page rather than scrolling to a section, so it reads differently */
+  .nav-links a.cta{
+    color:var(--gold-2); background:rgba(217,180,91,.09);
+    border:1px solid rgba(217,180,91,.45);
+  }
+  .nav-links a.cta:hover{background:rgba(217,180,91,.18); border-color:var(--gold)}
 
   /* ---------- hamburger ---------- */
   .burger{
@@ -384,6 +390,7 @@
       <a href="#points">Points Sheet</a>
       <a href="#deck">Points Deck</a>
       <a href="#faq">FAQ</a>
+      <a class="cta" href="/formsubmission">Submit Scores</a>
     </div>
   </div>
 </nav>
@@ -395,6 +402,10 @@
       <i class="pip w"></i><i class="pip u"></i><i class="pip b"></i><i class="pip r"></i><i class="pip g"></i>
     </div>
     <div class="btn-row">
+      <a class="btn primary" href="/formsubmission">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+        Submit Scores
+      </a>
       <a class="btn" id="lnk-sheet" href="#" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg>
         Points Sheet
