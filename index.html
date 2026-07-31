@@ -5,40 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ATL B3 Commander League</title>
 <meta name="description" content="Points, goals, and house rules for the ATL B3 Magic: The Gathering Commander League.">
+<link rel="stylesheet" href="/theme.css">
 <style>
-  :root{
-    --bg:#0a0910;
-    --bg-2:#100e18;
-    --panel:#15121f;
-    --panel-2:#1c1828;
-    --line:#2e2740;
-    --line-2:#463a63;
-    --ink:#e8e2d4;
-    --ink-dim:#a79fb8;
-    --ink-faint:#756c8a;
-    --gold:#d9b45b;
-    --gold-2:#f0d48a;
-    --w:#f5f1dc; --u:#7fb4e0; --b:#9b7fc4; --r:#e07b62; --g:#7fc09a;
-    --good:#7fc09a;
-    --bad:#e0605a;
-    --radius:14px;
-    --maxw:1180px;
-  }
-  *{box-sizing:border-box}
   html{scroll-behavior:smooth; scroll-padding-top:76px}
   body{
-    margin:0;
     background:
       radial-gradient(1100px 600px at 12% -8%, rgba(217,180,91,.10), transparent 60%),
       radial-gradient(900px 520px at 92% 4%, rgba(127,180,224,.09), transparent 60%),
       var(--bg);
-    color:var(--ink);
-    font:16px/1.6 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
-    -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:var(--maxw); margin:0 auto; padding:0 22px}
-  h1,h2,h3,h4{font-family:"Trajan Pro","Optima","Palatino Linotype",Georgia,serif; letter-spacing:.02em; margin:0}
-  a{color:var(--gold-2)}
 
   /* ---------- nav ---------- */
   nav{
@@ -56,9 +32,6 @@
   }
   nav.collapsed .nav-in{padding-top:8px; padding-bottom:8px}
   .brand{display:flex; align-items:center; gap:10px; font-family:inherit; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--gold); white-space:nowrap}
-  .pips{display:flex; gap:4px}
-  .pip{width:11px; height:11px; border-radius:50%; box-shadow:0 0 0 1px rgba(0,0,0,.5) inset}
-  .pip.w{background:var(--w)} .pip.u{background:var(--u)} .pip.b{background:var(--b)} .pip.r{background:var(--r)} .pip.g{background:var(--g)}
   .nav-links{margin-left:auto; display:flex; gap:6px; flex-wrap:wrap}
   .nav-links a{
     color:var(--ink-dim); text-decoration:none; font-size:13px; letter-spacing:.08em; text-transform:uppercase;
@@ -130,17 +103,6 @@
 
   /* ---------- buttons ---------- */
   .btn-row{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:34px}
-  .btn{
-    display:inline-flex; align-items:center; gap:11px; text-decoration:none;
-    font-family:system-ui,sans-serif; font-size:14px; font-weight:600; letter-spacing:.05em;
-    padding:14px 22px; border-radius:11px; border:1px solid var(--line-2);
-    background:linear-gradient(180deg,var(--panel-2),var(--panel)); color:var(--ink);
-    transition:.18s;
-  }
-  .btn:hover{border-color:var(--gold); color:var(--gold-2); transform:translateY(-2px); box-shadow:0 8px 26px rgba(0,0,0,.45)}
-  .btn.primary{background:linear-gradient(180deg,#e6c876,#c39a3c); color:#1a1408; border-color:#e6c876}
-  .btn.primary:hover{color:#1a1408; box-shadow:0 8px 30px rgba(217,180,91,.3)}
-  .btn svg{width:17px; height:17px; flex:none}
 
   /* ---------- sections ---------- */
   section{padding:64px 0; border-top:1px solid transparent}
@@ -200,16 +162,6 @@
   .cat.standard .item{border-left-color:var(--gold)}
   .cat.rotating .item{border-left-color:var(--u)}
   .cat.bad .item{border-left-color:var(--bad)}
-  .badge{
-    flex:none; min-width:48px; text-align:center;
-    font-family:system-ui,sans-serif; font-weight:700; font-size:14px;
-    padding:6px 9px; border-radius:8px;
-    background:rgba(255,255,255,.05); border:1px solid var(--line-2); color:var(--ink);
-  }
-  .badge.pos{color:#132a1d; background:linear-gradient(180deg,#96d4ae,#5fa77e); border-color:#96d4ae}
-  .badge.neg{color:#2c100e; background:linear-gradient(180deg,#f0918a,#c85a53); border-color:#f0918a}
-  .badge.dq{color:#fff; background:linear-gradient(180deg,#8e2b26,#5c1a16); border-color:#c04a43; letter-spacing:.06em}
-  .badge.var{color:var(--gold-2); background:rgba(217,180,91,.12); border-color:var(--gold)}
   .item .txt{font-size:14.5px; line-height:1.5; color:var(--ink)}
   .item .txt em{color:var(--ink-faint); font-style:normal; font-size:13px; display:block; margin-top:4px}
 

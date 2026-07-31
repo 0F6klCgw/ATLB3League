@@ -1,0 +1,68 @@
+/* ============================================================
+   ATL B3 Commander League — shared design tokens & components.
+   Linked with an absolute path (/theme.css) from every page,
+   since /formsubmission is served as a clean URL rather than a
+   file path — a relative href would resolve inconsistently.
+   ============================================================ */
+
+:root{
+  --bg:#0a0910;
+  --bg-2:#100e18;
+  --panel:#15121f;
+  --panel-2:#1c1828;
+  --line:#2e2740;
+  --line-2:#463a63;
+  --ink:#e8e2d4;
+  --ink-dim:#a79fb8;
+  --ink-faint:#756c8a;
+  --gold:#d9b45b;
+  --gold-2:#f0d48a;
+  --w:#f5f1dc; --u:#7fb4e0; --b:#9b7fc4; --r:#e07b62; --g:#7fc09a;
+  --good:#7fc09a;
+  --bad:#e0605a;
+  --radius:14px;
+  --maxw:1180px;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font:16px/1.6 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:"Trajan Pro","Optima","Palatino Linotype",Georgia,serif; letter-spacing:.02em; margin:0}
+a{color:var(--gold-2)}
+
+/* ---------- brand mark (WUBRG pips) ---------- */
+.pips{display:flex; gap:4px}
+.pip{width:11px; height:11px; border-radius:50%; box-shadow:0 0 0 1px rgba(0,0,0,.5) inset}
+.pip.w{background:var(--w)} .pip.u{background:var(--u)} .pip.b{background:var(--b)} .pip.r{background:var(--r)} .pip.g{background:var(--g)}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex; align-items:center; gap:11px; text-decoration:none;
+  font-family:system-ui,sans-serif; font-size:14px; font-weight:600; letter-spacing:.05em;
+  padding:14px 22px; border-radius:11px; border:1px solid var(--line-2);
+  background:linear-gradient(180deg,var(--panel-2),var(--panel)); color:var(--ink);
+  transition:.18s; cursor:pointer;
+}
+.btn:hover{border-color:var(--gold); color:var(--gold-2); transform:translateY(-2px); box-shadow:0 8px 26px rgba(0,0,0,.45)}
+.btn:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+.btn.primary{background:linear-gradient(180deg,#e6c876,#c39a3c); color:#1a1408; border-color:#e6c876}
+.btn.primary:hover{color:#1a1408; box-shadow:0 8px 30px rgba(217,180,91,.3)}
+.btn:disabled{opacity:.6; cursor:default; transform:none; box-shadow:none}
+.btn svg{width:17px; height:17px; flex:none}
+
+/* ---------- point-value badges ---------- */
+.badge{
+  flex:none; min-width:48px; text-align:center;
+  font-family:system-ui,sans-serif; font-weight:700; font-size:14px;
+  padding:6px 9px; border-radius:8px;
+  background:rgba(255,255,255,.05); border:1px solid var(--line-2); color:var(--ink);
+}
+.badge.pos{color:#132a1d; background:linear-gradient(180deg,#96d4ae,#5fa77e); border-color:#96d4ae}
+.badge.neg{color:#2c100e; background:linear-gradient(180deg,#f0918a,#c85a53); border-color:#f0918a}
+.badge.dq{color:#fff; background:linear-gradient(180deg,#8e2b26,#5c1a16); border-color:#c04a43; letter-spacing:.06em}
+.badge.var{color:var(--gold-2); background:rgba(217,180,91,.12); border-color:var(--gold)}
