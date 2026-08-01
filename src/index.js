@@ -44,7 +44,7 @@ const COLUMNS = [
   "submission_id", "full_name", "league_date", "game", "placement",
   ...Object.keys(POINT_VALUES),
   ...DQ_FLAGS,
-  "dq", "game_total",
+  "dq", "game_total", "submitted_by_email",
   "commander", "commander_scryfall_id", "commander_image_url",
   "partner", "partner_scryfall_id", "partner_image_url",
 ];
@@ -67,6 +67,15 @@ function jsonResponse(body, status = 200) {
 }
 
 async function handleSubmissions(request, env) {
+  // Cloudflare Access sits in front of this route (see the Access
+  // Application covering /formsubmission + /api/submissions) and injects
+  // this header at the edge, overwriting anything a client tries to send —
+  // it can't be spoofed by a request that didn't pass Access.
+  const submitted_by_email = (request.headers.get("Cf-Access-Authenticated-User-Email") || "").trim();
+  if (!submitted_by_email) {
+    return jsonResponse({ error: "Missing authenticated identity." }, 401);
+  }
+
   let rows;
   try {
     rows = await request.json();
@@ -79,7 +88,7 @@ async function handleSubmissions(request, env) {
 
   const validatedRows = [];
   for (const row of rows) {
-    const { row: validated, error } = validateRow(row);
+    const { row: validated, error } = validateRow(row, submitted_by_email);
     if (error) return jsonResponse({ error }, 400);
     validatedRows.push(validated);
   }
@@ -93,7 +102,7 @@ async function handleSubmissions(request, env) {
   return jsonResponse({ ok: true, saved: validatedRows.length });
 }
 
-function validateRow(row) {
+function validateRow(row, submitted_by_email) {
   if (!row || typeof row !== "object") return { error: "Each row must be an object." };
 
   const full_name = String(row.full_name || "").trim();
@@ -147,6 +156,7 @@ function validateRow(row) {
       ...dqFlags,
       dq: anyDq ? 1 : 0,
       game_total,
+      submitted_by_email: submitted_by_email.slice(0, 254),
       commander: truncate(row.commander, 200),
       commander_scryfall_id: truncate(row.commander_scryfall_id, 64),
       commander_image_url: truncate(row.commander_image_url, 500),
