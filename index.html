@@ -103,38 +103,6 @@
   .item .txt em{color:var(--ink-faint); font-style:normal; font-size:13px; display:block; margin-top:4px}
 
   /* ---------- points deck ---------- */
-  .deck-tools{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
-  .deck-tools input{
-    flex:1 1 230px; min-width:0; font:15px/1.4 system-ui,sans-serif;
-    background:var(--panel); border:1px solid var(--line-2); color:var(--ink);
-    padding:11px 15px; border-radius:10px;
-  }
-  .deck-tools input:focus{outline:none; border-color:var(--gold)}
-  .deck-tools input::placeholder{color:var(--ink-faint)}
-  .count{font-family:system-ui,sans-serif; font-size:13px; color:var(--ink-faint); white-space:nowrap}
-  .deck-tools .count, .stand-tools .count{margin-left:auto}
-
-  /* filter chips — must be shrinkable (flex:none would keep max-content
-     width, so the group could never wrap and would overflow to the right) */
-  .chips{display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:0 1 auto; min-width:0}
-  .chips .lbl{
-    font-family:system-ui,sans-serif; font-size:10.5px; letter-spacing:.16em;
-    text-transform:uppercase; color:var(--ink-faint); margin-right:2px;
-  }
-  .chip{
-    font:600 12.5px/1 system-ui,sans-serif; letter-spacing:.04em;
-    padding:8px 13px; border-radius:99px; cursor:pointer;
-    background:var(--panel); border:1px solid var(--line-2); color:var(--ink-dim);
-    transition:.15s;
-  }
-  .chip:hover{border-color:var(--gold); color:var(--gold-2)}
-  .chip:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
-  .chip[aria-pressed="true"]{background:rgba(217,180,91,.16); border-color:var(--gold); color:var(--gold-2)}
-  .chip[aria-pressed="true"].c2{background:rgba(127,180,224,.16); border-color:var(--u); color:var(--u)}
-  .chip[aria-pressed="true"].c3{background:rgba(155,127,196,.18); border-color:#9b7fc4; color:#c0a6e6}
-  .chip.clear{border-style:dashed; color:var(--ink-faint)}
-  .chips .sep{width:1px; height:20px; background:var(--line-2); margin:0 4px; flex:none}
-
   /* vertical scroll panel */
   .deck-frame{position:relative}
   .deck-frame:after{
@@ -169,41 +137,8 @@
   .goal.p3 .pts{background:rgba(155,127,196,.16); color:#c0a6e6; border-color:rgba(155,127,196,.45)}
   .goal .g-txt{font-size:14.5px; line-height:1.5}
   .goal .set{margin-top:auto; font-family:system-ui,sans-serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint)}
-  .empty{color:var(--ink-faint); font-family:system-ui,sans-serif; font-size:14px; padding:20px 2px}
 
   /* ---------- standings ---------- */
-  .stand-tools{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
-  .stand-tools input{
-    flex:1 1 230px; min-width:0; font:15px/1.4 system-ui,sans-serif;
-    background:var(--panel); border:1px solid var(--line-2); color:var(--ink);
-    padding:11px 15px; border-radius:10px;
-  }
-  .stand-tools input:focus{outline:none; border-color:var(--gold)}
-  .stand-tools input::placeholder{color:var(--ink-faint)}
-
-  .table-scroll{
-    max-height:min(60vh, 540px); overflow-y:auto; overscroll-behavior:contain;
-    border:1px solid var(--line); border-radius:14px; background:rgba(0,0,0,.22);
-  }
-  .table-scroll::-webkit-scrollbar{width:10px}
-  .table-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,.03); border-radius:99px; margin:8px 0}
-  .table-scroll::-webkit-scrollbar-thumb{background:var(--line-2); border-radius:99px; border:2px solid transparent; background-clip:padding-box}
-  .table-scroll::-webkit-scrollbar-thumb:hover{background:var(--gold); background-clip:padding-box}
-  table.stand{width:100%; border-collapse:collapse; font-family:system-ui,sans-serif}
-  table.stand th{
-    position:sticky; top:0; z-index:2;
-    background:#151220; color:var(--ink-faint);
-    font-size:11px; letter-spacing:.16em; text-transform:uppercase; font-weight:600;
-    text-align:right; padding:12px 14px; border-bottom:1px solid var(--line-2); white-space:nowrap;
-  }
-  table.stand th:nth-child(1){text-align:center; width:64px}
-  table.stand th:nth-child(2){text-align:left}
-  table.stand td{
-    padding:11px 14px; border-bottom:1px solid rgba(46,39,64,.6);
-    font-size:14.5px; color:var(--ink); text-align:right; white-space:nowrap;
-  }
-  table.stand tr:last-child td{border-bottom:none}
-  table.stand tbody tr:hover td{background:rgba(217,180,91,.05)}
   td.rank{
     text-align:center; color:var(--ink-faint); font-variant-numeric:tabular-nums; font-size:13.5px;
     border-left:3px solid transparent;
@@ -247,17 +182,6 @@
     section{padding:48px 0}
     .deck-scroll{max-height:72vh; padding:12px}
     .deck-grid{grid-template-columns:1fr}
-    /* search, chips and count each take their own full-width row */
-    .deck-tools, .stand-tools{gap:8px}
-    .deck-tools input, .stand-tools input{flex:1 1 100%}
-    .chips{flex:1 1 100%; justify-content:flex-start}
-    .deck-tools .count, .stand-tools .count{margin-left:0; flex:1 1 100%}
-    /* each group label starts its own line, so the two "All" chips stay
-       distinguishable now that the separator is hidden */
-    .chips .lbl{flex:1 1 100%; margin:4px 0 0}
-    .chips .sep{display:none}
-    .chip{padding:7px 12px; font-size:12px}
-    table.stand th, table.stand td{padding:10px 10px}
   }
 </style>
 </head>
@@ -278,6 +202,7 @@
       <a href="#scoring">Scoring</a>
       <a href="#points">Points Sheet</a>
       <a href="#deck">Points Deck</a>
+      <a href="/commanders">Commanders</a>
       <a href="#faq">FAQ</a>
       <a class="cta" href="/formsubmission">Submit Scores</a>
     </div>
@@ -323,7 +248,7 @@
       <span id="msg-stand">Loading from Google Sheets&hellip;</span>
       <button class="refresh" onclick="loadAll(true)">Refresh</button>
     </div>
-    <div class="stand-tools">
+    <div class="tools">
       <input id="stand-search" type="search" placeholder="Find a player&hellip;" autocomplete="off">
       <span class="count" id="stand-count"></span>
     </div>
@@ -386,7 +311,7 @@
       <span class="dot" id="dot-deck"></span>
       <span id="msg-deck">Loading from Google Sheets&hellip;</span>
     </div>
-    <div class="deck-tools">
+    <div class="tools">
       <input id="deck-search" type="search" placeholder="Search goals &mdash; try &ldquo;monarch&rdquo;, &ldquo;token&rdquo;, &ldquo;graveyard&rdquo;&hellip;" autocomplete="off">
       <div class="chips" id="deck-filters"></div>
       <span class="count" id="deck-count"></span>
