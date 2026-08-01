@@ -9,6 +9,13 @@
 // true" gap from the old Supabase setup (see PROJECT_PLAN.md #2) — the D1
 // schema's CHECK constraints are a second, independent layer of the same
 // guarantee.
+//
+// Identity: the client attaches a Clerk session token (Authorization:
+// Bearer <token>), which we verify against Clerk's own keys — not a
+// header any edge or proxy could inject, so this is checked cryptographically
+// rather than trusted positionally.
+
+import { createClerkClient, verifyToken } from "@clerk/backend";
 
 const POINT_VALUES = {
   // Standard points
@@ -67,13 +74,26 @@ function jsonResponse(body, status = 200) {
 }
 
 async function handleSubmissions(request, env) {
-  // Cloudflare Access sits in front of this route (see the Access
-  // Application covering /formsubmission + /api/submissions) and injects
-  // this header at the edge, overwriting anything a client tries to send —
-  // it can't be spoofed by a request that didn't pass Access.
-  const submitted_by_email = (request.headers.get("Cf-Access-Authenticated-User-Email") || "").trim();
+  const authHeader = request.headers.get("Authorization") || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!token) {
+    return jsonResponse({ error: "Missing session token." }, 401);
+  }
+
+  let submitted_by_email;
+  try {
+    const claims = await verifyToken(token, { secretKey: env.CLERK_SECRET_KEY });
+    const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
+    const user = await clerk.users.getUser(claims.sub);
+    submitted_by_email =
+      user.primaryEmailAddress?.emailAddress ||
+      user.emailAddresses?.[0]?.emailAddress ||
+      "";
+  } catch (e) {
+    return jsonResponse({ error: "Invalid or expired session — please sign in again." }, 401);
+  }
   if (!submitted_by_email) {
-    return jsonResponse({ error: "Missing authenticated identity." }, 401);
+    return jsonResponse({ error: "Your Clerk account has no email on file." }, 401);
   }
 
   let rows;
