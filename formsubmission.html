@@ -17,7 +17,6 @@
   .page-head{max-width:900px;margin:0 auto;padding:28px 16px 4px}
   .page-head h1{font-size:26px;color:var(--gold-2);font-family:"Trajan Pro","Optima","Palatino Linotype",Georgia,serif}
   .page-head p{margin:8px 0 0;color:var(--ink-dim);font-size:13px;font-family:system-ui,sans-serif}
-  #clerkUserButton{flex:0 0 auto;display:flex;align-items:center}
   #authGate{padding-top:8px}
   #authGate p{color:var(--ink-dim);font-family:system-ui,sans-serif;margin:0 0 16px;text-align:center}
   #clerkSignIn{max-width:400px;margin:0 auto}
@@ -153,42 +152,23 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="/auth.js"></script>
 <script>
 const SCRYFALL = "https://api.scryfall.com";
 
-// ---- Clerk auth gate ----
-function waitForClerk(){
-  return new Promise(resolve => {
-    if (window.Clerk) return resolve(window.Clerk);
-    const t = setInterval(() => { if (window.Clerk){ clearInterval(t); resolve(window.Clerk); } }, 50);
-  });
-}
+// ---- Clerk auth gate (Clerk-loading + user button lives in /auth.js) ----
+initClerk((Clerk, signedIn) => {
+  document.getElementById("authGate").classList.toggle("hidden", signedIn);
+  document.getElementById("formWrap").classList.toggle("hidden", !signedIn);
+  document.getElementById("footerWrap").classList.toggle("hidden", !signedIn);
 
-(async function initClerkAuth(){
-  const Clerk = await waitForClerk();
-  await Clerk.load();
-
-  function render(){
-    const signedIn = !!Clerk.user;
-    document.getElementById("authGate").classList.toggle("hidden", signedIn);
-    document.getElementById("formWrap").classList.toggle("hidden", !signedIn);
-    document.getElementById("footerWrap").classList.toggle("hidden", !signedIn);
-
-    const userBtn = document.getElementById("clerkUserButton");
-    if (signedIn){
-      userBtn.classList.remove("hidden");
-      Clerk.mountUserButton(userBtn);
-      const signInEl = document.getElementById("clerkSignIn");
-      signInEl.innerHTML = "";
-    } else {
-      userBtn.innerHTML = "";
-      Clerk.mountSignIn(document.getElementById("clerkSignIn"));
-    }
+  const signInEl = document.getElementById("clerkSignIn");
+  if (signedIn){
+    signInEl.innerHTML = "";
+  } else {
+    Clerk.mountSignIn(signInEl);
   }
-
-  Clerk.addListener(render);
-  render();
-})();
+});
 
 // ---- Point definitions (mirrors the Google Sheet) ----
 const SECTIONS = [
