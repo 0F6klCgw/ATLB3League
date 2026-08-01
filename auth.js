@@ -55,14 +55,25 @@ async function initClerk(onRender){
   const Clerk = await waitForClerk();
   await Clerk.load({ appearance: CLERK_APPEARANCE });
 
+  // Clerk.addListener fires on every resource change during init (client,
+  // session, user each trigger their own call) — not just once. Mounting a
+  // component on every fire stacks multiple instances into the same node,
+  // each wired to its own submit handler (this is what was sending the
+  // sign-in code email 3x). Guard every mount/unmount so it only happens
+  // once per actual state transition.
+  let userButtonMounted = false;
+
   function render(){
     const signedIn = !!Clerk.user;
     const userBtn = document.getElementById("clerkUserButton");
     if (userBtn){
-      if (signedIn){
+      if (signedIn && !userButtonMounted){
         userBtn.classList.remove("hidden");
         Clerk.mountUserButton(userBtn);
-      } else {
+        userButtonMounted = true;
+      } else if (!signedIn && userButtonMounted){
+        Clerk.unmountUserButton(userBtn);
+        userButtonMounted = false;
         userBtn.innerHTML = "";
       }
     }

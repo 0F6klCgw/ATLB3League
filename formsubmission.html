@@ -157,6 +157,13 @@
 const SCRYFALL = "https://api.scryfall.com";
 
 // ---- Clerk auth gate (Clerk-loading + user button lives in /auth.js) ----
+// initClerk's onRender fires on every Clerk resource change during init,
+// not just once — guard the mount so it only happens on the actual
+// transition into "signed out", not every callback invocation (mounting
+// repeatedly stacked multiple sign-in forms into the same node, each
+// wired to its own submit handler, which is why one submit sent the
+// verification email 3x).
+let signInMounted = false;
 initClerk((Clerk, signedIn) => {
   document.getElementById("authGate").classList.toggle("hidden", signedIn);
   document.getElementById("formWrap").classList.toggle("hidden", !signedIn);
@@ -164,9 +171,14 @@ initClerk((Clerk, signedIn) => {
 
   const signInEl = document.getElementById("clerkSignIn");
   if (signedIn){
+    if (signInMounted){
+      Clerk.unmountSignIn(signInEl);
+      signInMounted = false;
+    }
     signInEl.innerHTML = "";
-  } else {
+  } else if (!signInMounted){
     Clerk.mountSignIn(signInEl);
+    signInMounted = true;
   }
 });
 
