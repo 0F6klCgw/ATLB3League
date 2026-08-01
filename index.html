@@ -139,11 +139,16 @@
   .goal .set{margin-top:auto; font-family:system-ui,sans-serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint)}
 
   /* ---------- standings ---------- */
-  td.rank{
+  /* table.stand + these classes to out-specificity the base
+     `table.stand td{text-align:right}` rule in theme.css — a plain
+     `td.rank`/`td.who` has fewer type selectors than `table.stand td`,
+     so its own text-align silently lost to the base rule regardless of
+     source order (this was a real, previously-unnoticed bug). */
+  table.stand td.rank{
     text-align:center; color:var(--ink-faint); font-variant-numeric:tabular-nums; font-size:13.5px;
     border-left:3px solid transparent;
   }
-  td.who{text-align:left; font-family:"Iowan Old Style",Georgia,serif; font-size:15.5px; white-space:normal}
+  table.stand td.who{text-align:left; font-family:"Iowan Old Style",Georgia,serif; font-size:15.5px; white-space:normal}
   td.pts{color:var(--gold-2); font-weight:700; font-variant-numeric:tabular-nums}
   td.dim{color:var(--ink-faint); font-variant-numeric:tabular-nums}
 
