@@ -10,21 +10,24 @@ function waitForClerk(){
   });
 }
 
-// Matches Clerk's UI to the site's own theme.css tokens rather than
-// hardcoding colors here a second time — these resolve as normal CSS
-// custom properties since Clerk mounts into the same document.
+// Matches Clerk's UI to the site's own theme.css palette. Clerk's
+// `variables` run through its own color parser (to derive hover/shade
+// variants), which rejects `var(...)` — so these are the literal values
+// of the corresponding theme.css custom properties, kept in sync by hand.
+// `elements` below are plain style objects, not color-parsed, so those
+// can reference the custom properties directly.
 const CLERK_APPEARANCE = {
   variables: {
-    colorPrimary: "var(--gold)",
-    colorBackground: "var(--panel)",
-    colorInputBackground: "var(--panel-2)",
-    colorInputText: "var(--ink)",
-    colorText: "var(--ink)",
-    colorTextSecondary: "var(--ink-dim)",
+    colorPrimary: "#d9b45b",              // --gold
+    colorBackground: "#15121f",           // --panel
+    colorInputBackground: "#1c1828",      // --panel-2
+    colorInputText: "#e8e2d4",            // --ink
+    colorText: "#e8e2d4",                 // --ink
+    colorTextSecondary: "#a79fb8",        // --ink-dim
     colorTextOnPrimaryBackground: "#1a1408",
-    colorNeutral: "var(--ink-dim)",
-    colorDanger: "var(--bad)",
-    colorSuccess: "var(--good)",
+    colorNeutral: "#a79fb8",              // --ink-dim
+    colorDanger: "#e0605a",               // --bad
+    colorSuccess: "#7fc09a",              // --good
     borderRadius: "11px",
     fontFamily: "system-ui, sans-serif",
   },
