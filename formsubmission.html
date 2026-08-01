@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Commander League Point Sheet — Season 5</title>
 <link rel="stylesheet" href="/theme.css">
+<script
+  async
+  crossorigin="anonymous"
+  data-clerk-publishable-key="pk_live_Y2xlcmsucmVkaXJlY3RsaWdodG5pbmcuY29tJA"
+  src="https://clerk.redirectlightning.com/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+  type="text/javascript"
+></script>
 <style>
   body{font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
   header{padding:20px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
@@ -15,6 +22,9 @@
   header p{margin:0;color:var(--ink-dim);font-size:13px;font-family:system-ui,sans-serif}
   .menu-btn{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;background:rgba(217,180,91,.10);border:1px solid rgba(217,180,91,.45);color:var(--gold-2);border-radius:8px;padding:9px 14px;font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap;transition:.15s;font-family:system-ui,sans-serif}
   .menu-btn:hover{background:rgba(217,180,91,.2);border-color:var(--gold);color:#fbeec2}
+  #clerkUserButton{flex:0 0 auto;display:flex;align-items:center}
+  #authGate{padding-top:8px}
+  #authGate p{color:var(--ink-dim);font-family:system-ui,sans-serif;margin:0 0 16px}
   .wrap{max-width:900px;margin:0 auto;padding:16px}
   .row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
   .field{flex:1 1 220px;display:flex;flex-direction:column;gap:4px;font-family:system-ui,sans-serif}
@@ -74,11 +84,17 @@
       </div>
       <p>Season 5 · Tap each point you earned, for each game. Placement, standard, rotating &amp; bad-guy points included.</p>
     </div>
+    <div id="clerkUserButton"></div>
     <a class="menu-btn" href="/" title="Back to home">Home</a>
   </div>
 </header>
 
-<div class="wrap">
+<div class="wrap hidden" id="authGate">
+  <p>Sign in to submit scores — this ties each submission to your account.</p>
+  <div id="clerkSignIn"></div>
+</div>
+
+<div class="wrap hidden" id="formWrap">
   <div class="row">
     <div class="field"><label for="fullName">Full Name</label><input id="fullName" placeholder="Player name" autocomplete="off"></div>
     <div class="field"><label for="leagueDate">Date</label><input id="leagueDate" type="date"></div>
@@ -115,7 +131,7 @@
   <div id="gamePanels"></div>
 </div>
 
-<div class="footer">
+<div class="footer hidden" id="footerWrap">
   <div class="footerwrap">
     <div class="grand">Match total: <b id="grandTotal">0</b><span id="dqFlag" class="dqflag hidden">DQ</span></div>
     <div class="spacer"></div>
@@ -128,6 +144,40 @@
 
 <script>
 const SCRYFALL = "https://api.scryfall.com";
+
+// ---- Clerk auth gate ----
+function waitForClerk(){
+  return new Promise(resolve => {
+    if (window.Clerk) return resolve(window.Clerk);
+    const t = setInterval(() => { if (window.Clerk){ clearInterval(t); resolve(window.Clerk); } }, 50);
+  });
+}
+
+(async function initClerkAuth(){
+  const Clerk = await waitForClerk();
+  await Clerk.load();
+
+  function render(){
+    const signedIn = !!Clerk.user;
+    document.getElementById("authGate").classList.toggle("hidden", signedIn);
+    document.getElementById("formWrap").classList.toggle("hidden", !signedIn);
+    document.getElementById("footerWrap").classList.toggle("hidden", !signedIn);
+
+    const userBtn = document.getElementById("clerkUserButton");
+    if (signedIn){
+      userBtn.classList.remove("hidden");
+      Clerk.mountUserButton(userBtn);
+      const signInEl = document.getElementById("clerkSignIn");
+      signInEl.innerHTML = "";
+    } else {
+      userBtn.innerHTML = "";
+      Clerk.mountSignIn(document.getElementById("clerkSignIn"));
+    }
+  }
+
+  Clerk.addListener(render);
+  render();
+})();
 
 // ---- Point definitions (mirrors the Google Sheet) ----
 const SECTIONS = [
@@ -403,9 +453,11 @@ $("#submitBtn").onclick = async ()=>{
   const btn = $("#submitBtn");
   btn.disabled = true; btn.textContent = "Submitting…";
   try{
+    const token = await window.Clerk?.session?.getToken();
+    if(!token){ throw new Error("Please sign in first."); }
     const res = await fetch("/api/submissions", {
       method:"POST",
-      headers:{ "Content-Type":"application/json" },
+      headers:{ "Content-Type":"application/json", "Authorization": "Bearer " + token },
       body: JSON.stringify(rows),
     });
     if(!res.ok){

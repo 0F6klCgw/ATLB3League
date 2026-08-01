@@ -3,6 +3,10 @@
 -- every scoring column can only ever be 0 or its known fixed value —
 -- closes the "RLS always true" gap (see PROJECT_PLAN.md #2) at the
 -- database layer, in addition to the Worker-side validation in src/index.js.
+--
+-- This is the schema as of initial creation. Later changes (e.g.
+-- submitted_by_email) live as incremental files under migrations/ and
+-- are also reflected here so this file stays an accurate full definition.
 
 CREATE TABLE point_submissions (
   id                    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,6 +49,10 @@ CREATE TABLE point_submissions (
   dq                    INTEGER NOT NULL DEFAULT 0 CHECK (dq IN (0, 1)),
 
   game_total            INTEGER NOT NULL DEFAULT 0 CHECK (game_total BETWEEN -20 AND 20),
+
+  -- Captured from the Cf-Access-Authenticated-User-Email header once
+  -- Cloudflare Access gates /formsubmission + /api/submissions.
+  submitted_by_email    TEXT NOT NULL DEFAULT 'legacy-import' CHECK (length(submitted_by_email) BETWEEN 1 AND 254),
 
   commander             TEXT CHECK (length(commander) <= 200),
   commander_scryfall_id TEXT CHECK (length(commander_scryfall_id) <= 64),

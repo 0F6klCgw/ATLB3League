@@ -3,3 +3,6 @@ wrangler.jsonc
 schema.sql
 PROJECT_PLAN.md
 src/
+migrations/
+package.json
+package-lock.json

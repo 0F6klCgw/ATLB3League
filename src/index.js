@@ -9,6 +9,13 @@
 // true" gap from the old Supabase setup (see PROJECT_PLAN.md #2) — the D1
 // schema's CHECK constraints are a second, independent layer of the same
 // guarantee.
+//
+// Identity: the client attaches a Clerk session token (Authorization:
+// Bearer <token>), which we verify against Clerk's own keys — not a
+// header any edge or proxy could inject, so this is checked cryptographically
+// rather than trusted positionally.
+
+import { createClerkClient, verifyToken } from "@clerk/backend";
 
 const POINT_VALUES = {
   // Standard points
@@ -44,7 +51,7 @@ const COLUMNS = [
   "submission_id", "full_name", "league_date", "game", "placement",
   ...Object.keys(POINT_VALUES),
   ...DQ_FLAGS,
-  "dq", "game_total",
+  "dq", "game_total", "submitted_by_email",
   "commander", "commander_scryfall_id", "commander_image_url",
   "partner", "partner_scryfall_id", "partner_image_url",
 ];
@@ -67,6 +74,28 @@ function jsonResponse(body, status = 200) {
 }
 
 async function handleSubmissions(request, env) {
+  const authHeader = request.headers.get("Authorization") || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!token) {
+    return jsonResponse({ error: "Missing session token." }, 401);
+  }
+
+  let submitted_by_email;
+  try {
+    const claims = await verifyToken(token, { secretKey: env.CLERK_SECRET_KEY });
+    const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
+    const user = await clerk.users.getUser(claims.sub);
+    submitted_by_email =
+      user.primaryEmailAddress?.emailAddress ||
+      user.emailAddresses?.[0]?.emailAddress ||
+      "";
+  } catch (e) {
+    return jsonResponse({ error: "Invalid or expired session — please sign in again." }, 401);
+  }
+  if (!submitted_by_email) {
+    return jsonResponse({ error: "Your Clerk account has no email on file." }, 401);
+  }
+
   let rows;
   try {
     rows = await request.json();
@@ -79,7 +108,7 @@ async function handleSubmissions(request, env) {
 
   const validatedRows = [];
   for (const row of rows) {
-    const { row: validated, error } = validateRow(row);
+    const { row: validated, error } = validateRow(row, submitted_by_email);
     if (error) return jsonResponse({ error }, 400);
     validatedRows.push(validated);
   }
@@ -93,7 +122,7 @@ async function handleSubmissions(request, env) {
   return jsonResponse({ ok: true, saved: validatedRows.length });
 }
 
-function validateRow(row) {
+function validateRow(row, submitted_by_email) {
   if (!row || typeof row !== "object") return { error: "Each row must be an object." };
 
   const full_name = String(row.full_name || "").trim();
@@ -147,6 +176,7 @@ function validateRow(row) {
       ...dqFlags,
       dq: anyDq ? 1 : 0,
       game_total,
+      submitted_by_email: submitted_by_email.slice(0, 254),
       commander: truncate(row.commander, 200),
       commander_scryfall_id: truncate(row.commander_scryfall_id, 64),
       commander_image_url: truncate(row.commander_image_url, 500),
