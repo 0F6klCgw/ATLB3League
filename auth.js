@@ -34,6 +34,20 @@ const CLERK_APPEARANCE = {
   elements: {
     card: { border: "1px solid var(--line-2)", boxShadow: "0 20px 44px rgba(0,0,0,.6)" },
     userButtonPopoverCard: { border: "1px solid var(--line-2)", boxShadow: "0 20px 44px rgba(0,0,0,.6)" },
+    // The popover's action rows (icon + text) and its "Secured by Clerk"
+    // footer badge aren't fully driven by `variables` above — Clerk's
+    // automatic hover/footer shading assumes a light base theme, which
+    // goes the wrong direction against our dark background (near-invisible
+    // text/icons). Force them explicitly instead of relying on derivation.
+    userButtonPopoverActionButton: { color: "var(--ink)" },
+    userButtonPopoverActionButtonIcon: { color: "var(--ink-dim)" },
+    userButtonPopoverActionButton__manageAccount: { "&:hover": { backgroundColor: "var(--panel-2)" } },
+    userButtonPopoverActionButton__signOut: { "&:hover": { backgroundColor: "var(--panel-2)" } },
+    userButtonPopoverFooter: { opacity: 1 },
+    footer: { opacity: 1 },
+    footerActionText: { color: "var(--ink-dim)" },
+    poweredByClerkText: { color: "var(--ink-faint)" },
+    internal: { opacity: 1 },
   },
 };
 
