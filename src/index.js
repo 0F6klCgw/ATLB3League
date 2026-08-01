@@ -141,29 +141,24 @@ async function handleCommanders(env) {
 
   for (const row of results) {
     const hasPartner = row.partner && String(row.partner).trim();
-    let key, name, images;
+    let key, name, names;
 
     if (hasPartner) {
-      const pair = [
-        { name: row.commander, image: row.commander_image_url },
-        { name: row.partner, image: row.partner_image_url },
-      ].sort((a, b) => a.name.localeCompare(b.name));
-      name = pair.map((p) => p.name).join(" + ");
+      names = [row.commander, row.partner].sort((a, b) => a.localeCompare(b));
+      name = names.join(" + ");
       key = name.toLowerCase();
-      images = pair.map((p) => p.image).filter(Boolean);
     } else {
       name = row.commander;
+      names = [name];
       key = name.toLowerCase();
-      images = row.commander_image_url ? [row.commander_image_url] : [];
     }
 
     if (!stats.has(key)) {
-      stats.set(key, { name, images, played: 0, wins: 0 });
+      stats.set(key, { name, names, played: 0, wins: 0 });
     }
     const s = stats.get(key);
     s.played += 1;
     if (Number(row.placement) === 4 && !row.dq) s.wins += 1;
-    if (images.length && !s.images.length) s.images = images;
   }
 
   const list = Array.from(stats.values())

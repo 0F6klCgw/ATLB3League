@@ -26,13 +26,19 @@
   .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);flex:none}
   .dot.live{background:var(--good); box-shadow:0 0 9px var(--good)}
   .dot.warn{background:var(--bad); box-shadow:0 0 9px rgba(224,96,90,.6)}
-  .cmdr-thumbs{display:inline-flex; gap:4px; vertical-align:middle; margin-right:10px}
-  .cmdr-thumbs img{width:30px; border-radius:5px; background:#000; display:block}
-  td.who{text-align:left; font-family:"Iowan Old Style",Georgia,serif; font-size:15px; white-space:normal}
-  td.who .cn{display:inline-flex; align-items:center}
+  /* table.stand + these classes to out-specificity the base
+     `table.stand td{text-align:right}` rule in theme.css — a plain
+     `td.rank`/`td.who` has fewer type selectors than `table.stand td`,
+     so its own text-align silently lost to the base rule regardless of
+     source order (a real, previously-unnoticed bug — same fix applied
+     to index.html's identical standings table). */
+  table.stand td.who{text-align:left; font-family:"Iowan Old Style",Georgia,serif; font-size:15px; white-space:normal}
+  table.stand td.who a{color:var(--ink); text-decoration:none; border-bottom:1px solid var(--line-2)}
+  table.stand td.who a:hover{color:var(--gold-2); border-bottom-color:var(--gold)}
+  table.stand td.who .sep{color:var(--ink-faint); margin:0 4px}
   td.pts{color:var(--gold-2); font-weight:700; font-variant-numeric:tabular-nums}
   td.dim{color:var(--ink-faint); font-variant-numeric:tabular-nums}
-  td.rank{text-align:center; color:var(--ink-faint); font-variant-numeric:tabular-nums; font-size:13.5px}
+  table.stand td.rank{text-align:center; color:var(--ink-faint); font-variant-numeric:tabular-nums; font-size:13.5px}
 </style>
 </head>
 <body>
@@ -131,13 +137,12 @@ function render(){
     +   '<th>#</th><th>Commander</th><th>Played</th><th>Wins</th><th>Win %</th>'
     + '</tr></thead><tbody>'
     + list.map((c, i) => {
-        const thumbs = c.images.map(u => '<img src="' + esc(u) + '" alt="">').join('');
+        const nameLinks = c.names.map(n =>
+          '<a href="https://scryfall.com/search?q=' + encodeURIComponent('!"' + n + '"') + '" target="_blank" rel="noopener">' + esc(n) + '</a>'
+        ).join('<span class="sep">+</span>');
         return '<tr>'
           + '<td class="rank">' + (i + 1) + '</td>'
-          + '<td class="who"><span class="cn">'
-          +   (thumbs ? '<span class="cmdr-thumbs">' + thumbs + '</span>' : '')
-          +   esc(c.name)
-          + '</span></td>'
+          + '<td class="who">' + nameLinks + '</td>'
           + '<td class="dim">' + c.played + '</td>'
           + '<td class="dim">' + c.wins + '</td>'
           + '<td class="pts">' + c.winPct + '%</td>'
