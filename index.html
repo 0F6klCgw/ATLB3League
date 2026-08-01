@@ -16,76 +16,6 @@
   }
   .wrap{max-width:var(--maxw); margin:0 auto; padding:0 22px}
 
-  /* ---------- nav ---------- */
-  nav{
-    position:sticky; top:0; z-index:60;
-    background:rgba(10,9,16,.82);
-    backdrop-filter:blur(12px);
-    border-bottom:1px solid var(--line);
-    transition:background .25s ease, border-color .25s ease;
-  }
-  nav.collapsed{background:rgba(10,9,16,.95); border-bottom-color:var(--line-2); box-shadow:0 6px 22px rgba(0,0,0,.35)}
-  .nav-in{
-    max-width:var(--maxw); margin:0 auto; padding:12px 22px;
-    display:flex; align-items:center; gap:20px;
-    position:relative; transition:padding .25s ease;
-  }
-  nav.collapsed .nav-in{padding-top:8px; padding-bottom:8px}
-  .brand{display:flex; align-items:center; gap:10px; font-family:inherit; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--gold); white-space:nowrap}
-  .nav-links{margin-left:auto; display:flex; gap:6px; flex-wrap:wrap}
-  .nav-links a{
-    color:var(--ink-dim); text-decoration:none; font-size:13px; letter-spacing:.08em; text-transform:uppercase;
-    padding:7px 11px; border-radius:8px; font-family:system-ui,sans-serif;
-  }
-  .nav-links a:hover{color:var(--gold-2); background:rgba(217,180,91,.09)}
-  /* leaves the page rather than scrolling to a section, so it reads differently */
-  .nav-links a.cta{
-    color:var(--gold-2); background:rgba(217,180,91,.09);
-    border:1px solid rgba(217,180,91,.45);
-  }
-  .nav-links a.cta:hover{background:rgba(217,180,91,.18); border-color:var(--gold)}
-
-  /* ---------- hamburger ---------- */
-  .burger{
-    display:none; margin-left:auto; flex:none;
-    width:42px; height:36px; align-items:center; justify-content:center; padding:0;
-    background:none; border:1px solid var(--line-2); border-radius:9px; cursor:pointer;
-    transition:border-color .18s, background .18s;
-  }
-  .burger:hover{border-color:var(--gold); background:rgba(217,180,91,.07)}
-  .burger:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
-  .burger .bars{position:relative; display:block; width:18px; height:12px}
-  .burger .bars i{
-    position:absolute; left:0; width:100%; height:2px; border-radius:2px; background:var(--gold);
-    transition:top .24s ease, transform .24s ease, opacity .14s ease;
-  }
-  .burger .bars i:nth-child(1){top:0}
-  .burger .bars i:nth-child(2){top:5px}
-  .burger .bars i:nth-child(3){top:10px}
-  nav.open .burger{border-color:var(--gold)}
-  nav.open .burger .bars i:nth-child(1){top:5px; transform:rotate(45deg)}
-  nav.open .burger .bars i:nth-child(2){opacity:0}
-  nav.open .burger .bars i:nth-child(3){top:5px; transform:rotate(-45deg)}
-
-  /* collapsed: the same links become a dropdown panel */
-  nav.collapsed .burger{display:inline-flex}
-  nav.collapsed .nav-links{
-    position:absolute; top:calc(100% + 10px); right:22px; margin:0;
-    flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:2px;
-    min-width:196px; padding:8px;
-    background:linear-gradient(180deg,var(--panel-2),var(--panel));
-    border:1px solid var(--line-2); border-radius:12px;
-    box-shadow:0 20px 44px rgba(0,0,0,.6);
-    opacity:0; visibility:hidden; pointer-events:none;
-    transform:translateY(-8px) scale(.97); transform-origin:top right;
-    transition:opacity .18s ease, transform .18s ease, visibility .18s;
-  }
-  nav.collapsed.open .nav-links{opacity:1; visibility:visible; pointer-events:auto; transform:none}
-  nav.collapsed .nav-links a{padding:10px 13px; border-radius:8px; font-size:13.5px}
-  @media (prefers-reduced-motion: reduce){
-    nav, .nav-in, .burger .bars i, nav.collapsed .nav-links{transition:none}
-  }
-
   /* ---------- hero ---------- */
   header.hero{padding:78px 0 54px; text-align:center; position:relative; overflow:hidden}
   header.hero:after{
@@ -1205,64 +1135,8 @@ document.getElementById('stand-search').addEventListener('input', () => {
   ts = setTimeout(renderStandings, 120);
 });
 
-/* =====================================================================
-   Nav: full link row at the top of the page, hamburger once you scroll.
-   Narrow screens stay collapsed at any scroll position.
-   One set of links in the DOM — CSS just re-presents them as a panel.
-   ===================================================================== */
-(function initNav(){
-  const nav      = document.querySelector('nav');
-  const burger   = document.getElementById('burger');
-  const narrow   = window.matchMedia('(max-width: 760px)');
-  const COLLAPSE_AT = 90;   // px scrolled before the menu folds up
-
-  function setOpen(open){
-    nav.classList.toggle('open', open);
-    burger.setAttribute('aria-expanded', open ? 'true' : 'false');
-    burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-  }
-
-  function syncNav(){
-    const collapsed = narrow.matches || window.scrollY > COLLAPSE_AT;
-    nav.classList.toggle('collapsed', collapsed);
-    if (!collapsed) setOpen(false);   // never leave a hidden panel "open"
-  }
-
-  let ticking = false;
-  window.addEventListener('scroll', () => {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => { syncNav(); ticking = false; });
-  }, { passive: true });
-
-  window.addEventListener('resize', syncNav);
-  if (narrow.addEventListener) narrow.addEventListener('change', syncNav);
-  else if (narrow.addListener)  narrow.addListener(syncNav);   // older Safari
-
-  burger.addEventListener('click', e => {
-    e.stopPropagation();
-    setOpen(!nav.classList.contains('open'));
-  });
-
-  // Close on link tap, outside click, or Escape.
-  document.querySelectorAll('#nav-links a').forEach(a =>
-    a.addEventListener('click', () => setOpen(false)));
-
-  document.addEventListener('click', e => {
-    if (nav.classList.contains('open') && !nav.contains(e.target)) setOpen(false);
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && nav.classList.contains('open')){
-      setOpen(false);
-      burger.focus();
-    }
-  });
-
-  syncNav();
-})();
-
 loadAll(false);
 </script>
+<script src="/nav.js"></script>
 </body>
 </html>

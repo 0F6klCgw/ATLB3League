@@ -14,14 +14,9 @@
 ></script>
 <style>
   body{font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-  header{padding:20px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
-  .header-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:16px}
-  .header-inner .titles{flex:1;min-width:0}
-  .title-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
-  header h1{font-size:20px}
-  header p{margin:0;color:var(--ink-dim);font-size:13px;font-family:system-ui,sans-serif}
-  .menu-btn{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;background:rgba(217,180,91,.10);border:1px solid rgba(217,180,91,.45);color:var(--gold-2);border-radius:8px;padding:9px 14px;font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap;transition:.15s;font-family:system-ui,sans-serif}
-  .menu-btn:hover{background:rgba(217,180,91,.2);border-color:var(--gold);color:#fbeec2}
+  .page-head{max-width:900px;margin:0 auto;padding:28px 16px 4px}
+  .page-head h1{font-size:26px;color:var(--gold-2);font-family:"Trajan Pro","Optima","Palatino Linotype",Georgia,serif}
+  .page-head p{margin:8px 0 0;color:var(--ink-dim);font-size:13px;font-family:system-ui,sans-serif}
   #clerkUserButton{flex:0 0 auto;display:flex;align-items:center}
   #authGate{padding-top:8px}
   #authGate p{color:var(--ink-dim);font-family:system-ui,sans-serif;margin:0 0 16px;text-align:center}
@@ -76,19 +71,34 @@
 </style>
 </head>
 <body>
-<header>
-  <div class="header-inner">
-    <div class="titles">
-      <div class="title-row">
-        <span class="pips"><i class="pip w"></i><i class="pip u"></i><i class="pip b"></i><i class="pip r"></i><i class="pip g"></i></span>
-        <h1>Commander League Point Sheet</h1>
-      </div>
-      <p>Season 5 · Tap each point you earned, for each game. Placement, standard, rotating &amp; bad-guy points included.</p>
+
+<nav>
+  <div class="nav-in">
+    <div class="brand">
+      <span class="pips"><i class="pip w"></i><i class="pip u"></i><i class="pip b"></i><i class="pip r"></i><i class="pip g"></i></span>
+      ATL B3
+    </div>
+    <button class="burger" id="burger" type="button"
+            aria-label="Open menu" aria-expanded="false" aria-controls="nav-links">
+      <span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
+    <div class="nav-links" id="nav-links">
+      <a href="/">Home</a>
+      <a href="/#standings">Standings</a>
+      <a href="/#scoring">Scoring</a>
+      <a href="/#points">Points Sheet</a>
+      <a href="/#deck">Points Deck</a>
+      <a href="/#faq">FAQ</a>
+      <a class="cta" href="/formsubmission">Submit Scores</a>
     </div>
     <div id="clerkUserButton"></div>
-    <a class="menu-btn" href="/" title="Back to home">Home</a>
   </div>
-</header>
+</nav>
+
+<div class="page-head">
+  <h1>Commander League Point Sheet</h1>
+  <p>Season 5 · Tap each point you earned, for each game. Placement, standard, rotating &amp; bad-guy points included.</p>
+</div>
 
 <div class="wrap hidden" id="authGate">
   <p>Sign in to submit scores — this ties each submission to your account.</p>
@@ -486,5 +496,6 @@ $("#resetBtn").onclick = ()=> doReset(false);
 $("#leagueDate").value = new Date().toISOString().slice(0,10);
 renderAll();
 </script>
+<script src="/nav.js"></script>
 </body>
 </html>
