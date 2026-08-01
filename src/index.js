@@ -62,6 +62,9 @@ export default {
     if (url.pathname === "/api/submissions" && request.method === "POST") {
       return handleSubmissions(request, env);
     }
+    if (url.pathname === "/api/commanders" && request.method === "GET") {
+      return handleCommanders(env);
+    }
     return env.ASSETS.fetch(request);
   },
 };
@@ -120,6 +123,57 @@ async function handleSubmissions(request, env) {
   }
 
   return jsonResponse({ ok: true, saved: validatedRows.length });
+}
+
+// A partner pair ("Thrasios, Triton Hero" + "Tymna the Weaver") is one deck
+// identity regardless of which commander a given submission listed as
+// primary vs partner — sort the pair so both orderings land on the same key.
+async function handleCommanders(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT commander, commander_scryfall_id, commander_image_url,
+            partner, partner_scryfall_id, partner_image_url,
+            placement, dq
+     FROM point_submissions
+     WHERE commander IS NOT NULL AND trim(commander) != ''`
+  ).all();
+
+  const stats = new Map();
+
+  for (const row of results) {
+    const hasPartner = row.partner && String(row.partner).trim();
+    let key, name, images;
+
+    if (hasPartner) {
+      const pair = [
+        { name: row.commander, image: row.commander_image_url },
+        { name: row.partner, image: row.partner_image_url },
+      ].sort((a, b) => a.name.localeCompare(b.name));
+      name = pair.map((p) => p.name).join(" + ");
+      key = name.toLowerCase();
+      images = pair.map((p) => p.image).filter(Boolean);
+    } else {
+      name = row.commander;
+      key = name.toLowerCase();
+      images = row.commander_image_url ? [row.commander_image_url] : [];
+    }
+
+    if (!stats.has(key)) {
+      stats.set(key, { name, images, played: 0, wins: 0 });
+    }
+    const s = stats.get(key);
+    s.played += 1;
+    if (Number(row.placement) === 4 && !row.dq) s.wins += 1;
+    if (images.length && !s.images.length) s.images = images;
+  }
+
+  const list = Array.from(stats.values())
+    .map((s) => ({
+      ...s,
+      winPct: s.played ? Math.round((s.wins / s.played) * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.winPct - a.winPct || b.played - a.played || a.name.localeCompare(b.name));
+
+  return jsonResponse(list);
 }
 
 function validateRow(row, submitted_by_email) {
