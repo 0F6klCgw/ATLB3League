@@ -10,9 +10,33 @@ function waitForClerk(){
   });
 }
 
+// Matches Clerk's UI to the site's own theme.css tokens rather than
+// hardcoding colors here a second time — these resolve as normal CSS
+// custom properties since Clerk mounts into the same document.
+const CLERK_APPEARANCE = {
+  variables: {
+    colorPrimary: "var(--gold)",
+    colorBackground: "var(--panel)",
+    colorInputBackground: "var(--panel-2)",
+    colorInputText: "var(--ink)",
+    colorText: "var(--ink)",
+    colorTextSecondary: "var(--ink-dim)",
+    colorTextOnPrimaryBackground: "#1a1408",
+    colorNeutral: "var(--ink-dim)",
+    colorDanger: "var(--bad)",
+    colorSuccess: "var(--good)",
+    borderRadius: "11px",
+    fontFamily: "system-ui, sans-serif",
+  },
+  elements: {
+    card: { border: "1px solid var(--line-2)", boxShadow: "0 20px 44px rgba(0,0,0,.6)" },
+    userButtonPopoverCard: { border: "1px solid var(--line-2)", boxShadow: "0 20px 44px rgba(0,0,0,.6)" },
+  },
+};
+
 async function initClerk(onRender){
   const Clerk = await waitForClerk();
-  await Clerk.load();
+  await Clerk.load({ appearance: CLERK_APPEARANCE });
 
   function render(){
     const signedIn = !!Clerk.user;
