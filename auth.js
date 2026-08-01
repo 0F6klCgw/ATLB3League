@@ -62,19 +62,34 @@ async function initClerk(onRender){
   // sign-in code email 3x). Guard every mount/unmount so it only happens
   // once per actual state transition.
   let userButtonMounted = false;
+  let signInBtnRendered = false;
 
   function render(){
     const signedIn = !!Clerk.user;
     const userBtn = document.getElementById("clerkUserButton");
     if (userBtn){
-      if (signedIn && !userButtonMounted){
-        userBtn.classList.remove("hidden");
-        Clerk.mountUserButton(userBtn);
-        userButtonMounted = true;
-      } else if (!signedIn && userButtonMounted){
-        Clerk.unmountUserButton(userBtn);
-        userButtonMounted = false;
-        userBtn.innerHTML = "";
+      if (signedIn){
+        if (signInBtnRendered){
+          userBtn.innerHTML = "";
+          signInBtnRendered = false;
+        }
+        if (!userButtonMounted){
+          userBtn.classList.remove("hidden");
+          Clerk.mountUserButton(userBtn);
+          userButtonMounted = true;
+        }
+      } else {
+        if (userButtonMounted){
+          Clerk.unmountUserButton(userBtn);
+          userButtonMounted = false;
+        }
+        // Always show a way to sign in, rather than leaving the slot empty
+        // until someone's already authenticated elsewhere.
+        if (!signInBtnRendered){
+          userBtn.innerHTML = '<button type="button" class="nav-signin-btn">Sign In</button>';
+          userBtn.querySelector(".nav-signin-btn").addEventListener("click", () => Clerk.openSignIn());
+          signInBtnRendered = true;
+        }
       }
     }
     if (typeof onRender === "function") onRender(Clerk, signedIn);

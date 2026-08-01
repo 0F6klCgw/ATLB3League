@@ -69,6 +69,13 @@ a{color:var(--gold-2)}
 
 /* ---------- Clerk user button slot (in the nav) ---------- */
 #clerkUserButton{flex:0 0 auto;display:flex;align-items:center}
+.nav-signin-btn{
+  font:600 13px/1 system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--gold-2); background:rgba(217,180,91,.09); border:1px solid rgba(217,180,91,.45);
+  padding:8px 14px; border-radius:8px; cursor:pointer; white-space:nowrap;
+  transition:.15s;
+}
+.nav-signin-btn:hover{background:rgba(217,180,91,.18); border-color:var(--gold)}
 
 /* ---------- nav ---------- */
 /* Shared across every page — behavior lives in /nav.js. One set of
