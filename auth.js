@@ -64,8 +64,26 @@ async function initClerk(onRender){
   let userButtonMounted = false;
   let signInBtnRendered = false;
 
+  function syncAdminLink(signedIn){
+    const navLinks = document.getElementById("nav-links");
+    if (!navLinks) return;
+    const isAdmin = signedIn && Clerk.user?.publicMetadata?.role === "admin";
+    let link = navLinks.querySelector("#nav-admin-link");
+    if (isAdmin && !link){
+      link = document.createElement("a");
+      link.id = "nav-admin-link";
+      link.href = "/admin";
+      link.textContent = "Admin";
+      const cta = navLinks.querySelector("a.cta");
+      navLinks.insertBefore(link, cta || null);
+    } else if (!isAdmin && link){
+      link.remove();
+    }
+  }
+
   function render(){
     const signedIn = !!Clerk.user;
+    syncAdminLink(signedIn);
     const userBtn = document.getElementById("clerkUserButton");
     if (userBtn){
       if (signedIn){
