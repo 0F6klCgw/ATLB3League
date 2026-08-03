@@ -65,6 +65,13 @@ export default {
     if (url.pathname === "/api/commanders" && request.method === "GET") {
       return handleCommanders(env);
     }
+    if (url.pathname === "/api/admin/submissions" && request.method === "GET") {
+      return handleAdminList(request, env);
+    }
+    const deleteMatch = url.pathname.match(/^\/api\/admin\/submissions\/(\d+)$/);
+    if (deleteMatch && request.method === "DELETE") {
+      return handleAdminDelete(request, env, Number(deleteMatch[1]));
+    }
     return env.ASSETS.fetch(request);
   },
 };
@@ -76,25 +83,74 @@ function jsonResponse(body, status = 200) {
   });
 }
 
-async function handleSubmissions(request, env) {
+// Verifies the Clerk session token from the Authorization header — never
+// trusted from a client-asserted header, always checked cryptographically
+// against Clerk's own keys — and returns the corresponding user, or null.
+async function verifyClerkUser(request, env) {
   const authHeader = request.headers.get("Authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!token) {
-    return jsonResponse({ error: "Missing session token." }, 401);
-  }
-
-  let submitted_by_email;
+  if (!token) return null;
   try {
     const claims = await verifyToken(token, { secretKey: env.CLERK_SECRET_KEY });
     const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
-    const user = await clerk.users.getUser(claims.sub);
-    submitted_by_email =
-      user.primaryEmailAddress?.emailAddress ||
-      user.emailAddresses?.[0]?.emailAddress ||
-      "";
+    return await clerk.users.getUser(claims.sub);
+  } catch {
+    return null;
+  }
+}
+
+function emailOf(user) {
+  return user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress || "";
+}
+
+// Admin status lives in Clerk's publicMetadata (set via the Clerk dashboard
+// or Backend API), not a hardcoded list — adding/removing an admin doesn't
+// need a code change or deploy.
+function isAdmin(user) {
+  return user?.publicMetadata?.role === "admin";
+}
+
+async function requireAdmin(request, env) {
+  const user = await verifyClerkUser(request, env);
+  if (!user) return { error: jsonResponse({ error: "Invalid or expired session — please sign in again." }, 401) };
+  if (!isAdmin(user)) return { error: jsonResponse({ error: "Not authorized." }, 403) };
+  return { user };
+}
+
+async function handleAdminList(request, env) {
+  const { error } = await requireAdmin(request, env);
+  if (error) return error;
+
+  const { results } = await env.DB.prepare(
+    `SELECT id, submission_id, full_name, submitted_by_email, league_date, game,
+            placement, game_total, dq, commander, partner, created_at
+     FROM point_submissions
+     ORDER BY created_at DESC, id DESC
+     LIMIT 1000`
+  ).all();
+
+  return jsonResponse(results);
+}
+
+async function handleAdminDelete(request, env, id) {
+  const { error } = await requireAdmin(request, env);
+  if (error) return error;
+
+  try {
+    await env.DB.prepare("DELETE FROM point_submissions WHERE id = ?").bind(id).run();
   } catch (e) {
+    console.error("[admin] delete failed:", e);
+    return jsonResponse({ error: "Could not delete submission." }, 500);
+  }
+  return jsonResponse({ ok: true });
+}
+
+async function handleSubmissions(request, env) {
+  const user = await verifyClerkUser(request, env);
+  if (!user) {
     return jsonResponse({ error: "Invalid or expired session — please sign in again." }, 401);
   }
+  const submitted_by_email = emailOf(user);
   if (!submitted_by_email) {
     return jsonResponse({ error: "Your Clerk account has no email on file." }, 401);
   }

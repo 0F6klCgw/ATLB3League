@@ -19,12 +19,6 @@
   .page-head h1{font-size:clamp(28px,4vw,40px); color:var(--gold-2)}
   .page-head p{margin:12px 0 0; color:var(--ink-dim); max-width:640px}
   .wrap{max-width:var(--maxw); margin:0 auto; padding:22px}
-  .status{
-    font-family:system-ui,sans-serif; font-size:12.5px; color:var(--ink-faint);
-    display:flex; align-items:center; gap:9px; margin-bottom:18px;
-  }
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);flex:none}
-  .dot.live{background:var(--good); box-shadow:0 0 9px var(--good)}
   .dot.warn{background:var(--bad); box-shadow:0 0 9px rgba(224,96,90,.6)}
   /* table.stand + these classes to out-specificity the base
      `table.stand td{text-align:right}` rule in theme.css — a plain

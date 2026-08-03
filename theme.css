@@ -67,6 +67,8 @@ a{color:var(--gold-2)}
 .badge.dq{color:#fff; background:linear-gradient(180deg,#8e2b26,#5c1a16); border-color:#c04a43; letter-spacing:.06em}
 .badge.var{color:var(--gold-2); background:rgba(217,180,91,.12); border-color:var(--gold)}
 
+.hidden{display:none}
+
 /* ---------- Clerk user button slot (in the nav) ---------- */
 #clerkUserButton{flex:0 0 auto;display:flex;align-items:center}
 .nav-signin-btn{
@@ -185,6 +187,17 @@ nav.collapsed .nav-links a{padding:10px 13px; border-radius:8px; font-size:13.5p
 .chip[aria-pressed="true"].c3{background:rgba(155,127,196,.18); border-color:#9b7fc4; color:#c0a6e6}
 .chip.clear{border-style:dashed; color:var(--ink-faint)}
 .chips .sep{width:1px; height:20px; background:var(--line-2); margin:0 4px; flex:none}
+
+/* ---------- status line (loading/live indicator) ---------- */
+/* .dot.warn is deliberately NOT shared here — index.html uses gold for a
+   soft "showing cached data" state, while commanders.html/admin.html use
+   red for a harder "failed to load" state. Each page defines its own. */
+.status{
+  font-family:system-ui,sans-serif; font-size:12.5px; color:var(--ink-faint);
+  display:flex; align-items:center; gap:9px; margin-bottom:18px;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);flex:none}
+.dot.live{background:var(--good); box-shadow:0 0 9px var(--good)}
 
 /* ---------- scrollable data table ---------- */
 .table-scroll{
