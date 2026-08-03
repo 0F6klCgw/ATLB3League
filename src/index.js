@@ -119,7 +119,8 @@ async function handleSubmissions(request, env) {
   try {
     await env.DB.batch(validatedRows.map((row) => insertStatement(env, row)));
   } catch (e) {
-    return jsonResponse({ error: "Could not save submission: " + e.message }, 500);
+    console.error("[submissions] D1 write failed:", e);
+    return jsonResponse({ error: "Could not save submission. Please try again." }, 500);
   }
 
   return jsonResponse({ ok: true, saved: validatedRows.length });
