@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printable Points Sheet — ATL B3 Commander League</title>
+<meta name="description" content="Blank paper Points Sheet for league night — print, mark by hand, transcribe into the Point Sheet page after.">
+<link rel="stylesheet" href="/theme.css">
+<script
+  async
+  crossorigin="anonymous"
+  data-clerk-publishable-key="pk_live_Y2xlcmsucmVkaXJlY3RsaWdodG5pbmcuY29tJA"
+  src="https://clerk.redirectlightning.com/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+  type="text/javascript"
+></script>
+<style>
+  .page-head{max-width:900px;margin:0 auto;padding:28px 16px 4px}
+  .page-head h1{font-size:26px;color:var(--gold-2);font-family:"Trajan Pro","Optima","Palatino Linotype",Georgia,serif}
+  .page-head p{margin:8px 0 0;color:var(--ink-dim);font-size:13px;font-family:system-ui,sans-serif}
+  .page-actions{max-width:900px;margin:14px auto 0;padding:0 16px;display:flex;gap:10px;align-items:center}
+
+  /* The sheet itself previews exactly as it will print — light paper, not
+     the site's dark theme — so there's no surprise switch when you hit
+     Print. Everything below this point is scoped to #sheet. */
+  #sheet{
+    max-width:900px;margin:18px auto 40px;padding:28px 32px;
+    background:#fff;color:#111;border-radius:10px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    box-shadow:0 20px 44px rgba(0,0,0,.4);
+  }
+  #sheet h2{
+    font-size:20px;margin:0 0 2px;font-family:"Trajan Pro","Optima","Palatino Linotype",Georgia,serif;
+  }
+  #sheet .sub{font-size:12px;color:#555;margin:0 0 16px}
+  .meta-row{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+  .meta-field{flex:1 1 180px;display:flex;flex-direction:column;gap:3px}
+  .meta-field label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#777}
+  .meta-field input{
+    font:15px/1.3 inherit;border:none;border-bottom:1.5px solid #111;padding:4px 2px;color:#111;background:transparent;
+  }
+  .meta-field input:focus{outline:none;border-color:#8a6a1f}
+
+  table.sheet-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.sheet-table th, table.sheet-table td{border:1px solid #999;padding:5px 7px;vertical-align:middle}
+  table.sheet-table thead th{background:#eee;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:#333}
+  table.sheet-table th.game-col, table.sheet-table td.chk{width:34px;text-align:center}
+  table.sheet-table th.pts-col, table.sheet-table td.pts{width:40px;text-align:center;font-weight:700;white-space:nowrap}
+  tr.cat-row td{background:#f3f1ea;font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;padding-top:8px;padding-bottom:8px}
+  tr.total-row td{font-weight:700;background:#f8f6ef}
+  td.desc{font-size:12px;line-height:1.35}
+  .box{width:18px;height:18px;border:1.4px solid #333;margin:0 auto;border-radius:3px}
+  .fillin{display:block;border-bottom:1.2px solid #333;min-height:16px}
+
+  @media print{
+    body{background:#fff}
+    nav, .page-head, .page-actions{display:none !important}
+    #sheet{box-shadow:none;margin:0;padding:0;max-width:none;border-radius:0}
+    #sheet h2{font-size:17px}
+    #sheet .sub{margin-bottom:10px}
+    .meta-row{margin-bottom:10px}
+    table.sheet-table{font-size:10.5px}
+    table.sheet-table th, table.sheet-table td{padding:2.5px 6px}
+    tr.cat-row td{padding-top:4px;padding-bottom:4px}
+    .box{width:13px;height:13px}
+    @page{margin:0.4in}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-in">
+    <a class="brand" href="/">
+      <span class="pips"><i class="pip w"></i><i class="pip u"></i><i class="pip b"></i><i class="pip r"></i><i class="pip g"></i></span>
+      ATL B3
+    </a>
+    <button class="burger" id="burger" type="button"
+            aria-label="Open menu" aria-expanded="false" aria-controls="nav-links">
+      <span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
+    <div class="nav-links" id="nav-links">
+      <a href="/">Home</a>
+      <a href="/#standings">Standings</a>
+      <a href="/#scoring">Scoring</a>
+      <a href="/#points">Points Sheet</a>
+      <a href="/#deck">Points Deck</a>
+      <a href="/commanders">Commanders</a>
+      <a href="/#faq">FAQ</a>
+      <a class="cta" href="/formsubmission">Submit Scores</a>
+    </div>
+    <div id="clerkUserButton"></div>
+  </div>
+</nav>
+
+<div class="page-head">
+  <h1>Printable Points Sheet</h1>
+  <p>A blank paper copy of the same scoring rules used on the <a href="/formsubmission" style="color:var(--gold-2)">Submit Scores</a> page. Print one per player, mark it up during the night, then enter the totals online afterward.</p>
+</div>
+<div class="page-actions">
+  <button type="button" class="btn primary" onclick="window.print()">Print</button>
+</div>
+
+<div id="sheet">
+  <h2>ATL B3 Commander League — Points Sheet</h2>
+  <p class="sub">Season 5 · Standard points every night · Rotating points change on a schedule · Bad Guy points subtract · DQ = disqualified from the game</p>
+
+  <div class="meta-row">
+    <div class="meta-field"><label>Player Name</label><input type="text"></div>
+    <div class="meta-field"><label>Date</label><input type="text"></div>
+    <div class="meta-field" style="flex:0 1 120px"><label>Season</label><input type="text" value="5"></div>
+  </div>
+
+  <table class="sheet-table">
+    <thead>
+      <tr>
+        <th class="pts-col">Pts</th>
+        <th>Category / Item</th>
+        <th class="game-col">G1</th>
+        <th class="game-col">G2</th>
+        <th class="game-col">G3</th>
+      </tr>
+    </thead>
+    <tbody id="sheet-body"></tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="2">Game total</td>
+        <td class="chk"><span class="fillin"></span></td>
+        <td class="chk"><span class="fillin"></span></td>
+        <td class="chk"><span class="fillin"></span></td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="2">Night total (add all three games)</td>
+        <td colspan="3"><span class="fillin"></span></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<script src="/scoring-data.js"></script>
+<script>
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Placement renders as just another category, using the exact same row
+// template as every other scoring section — 1st/2nd/3rd/4th/None with
+// their point values, one checkbox per game.
+const PLACEMENT_SECTION = {
+  title: "Placement — skip if more than one player is alive at round's end",
+  items: PLACEMENTS.map(p => ({
+    key: "placement_" + p.label,
+    val: p.val,
+    desc: "Finished " + p.label + (p.val ? "" : " (no one finished, or game was cut short)"),
+  })),
+};
+
+function ptsLabel(it){
+  if (it.dq) return "DQ";
+  if (!it.val) return "—";
+  return it.val > 0 ? "+" + it.val : String(it.val);
+}
+
+function renderSheet(){
+  const sections = [PLACEMENT_SECTION, ...SECTIONS];
+  const host = document.getElementById("sheet-body");
+  host.innerHTML = sections.map(sec => (
+    '<tr class="cat-row"><td colspan="5">' + esc(sec.title) + '</td></tr>'
+    + sec.items.map(it => (
+        '<tr>'
+        +   '<td class="pts">' + esc(ptsLabel(it)) + '</td>'
+        +   '<td class="desc">' + esc(it.desc) + '</td>'
+        +   '<td class="chk"><div class="box"></div></td>'
+        +   '<td class="chk"><div class="box"></div></td>'
+        +   '<td class="chk"><div class="box"></div></td>'
+        + '</tr>'
+      )).join('')
+  )).join('');
+}
+renderSheet();
+</script>
+<script src="/auth.js"></script>
+<script src="/nav.js"></script>
+</body>
+</html>
