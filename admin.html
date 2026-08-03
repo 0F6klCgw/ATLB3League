@@ -76,15 +76,34 @@
 </div>
 
 <div class="wrap hidden" id="adminContent">
-  <div class="status" id="st-admin">
-    <span class="dot" id="dot-admin"></span>
-    <span id="msg-admin">Loading submissions&hellip;</span>
+  <div class="chips" id="admin-tabs">
+    <button type="button" class="chip" data-tab="submissions" aria-pressed="true">Submissions</button>
+    <button type="button" class="chip" data-tab="audit" aria-pressed="false">Audit Log</button>
   </div>
-  <div class="tools">
-    <input id="admin-search" type="search" placeholder="Search name, email, or commander&hellip;" autocomplete="off">
-    <span class="count" id="admin-count"></span>
+
+  <div id="tab-submissions">
+    <div class="status" id="st-admin">
+      <span class="dot" id="dot-admin"></span>
+      <span id="msg-admin">Loading submissions&hellip;</span>
+    </div>
+    <div class="tools">
+      <input id="admin-search" type="search" placeholder="Search name, email, or commander&hellip;" autocomplete="off">
+      <span class="count" id="admin-count"></span>
+    </div>
+    <div class="table-scroll" id="admin-out"></div>
   </div>
-  <div class="table-scroll" id="admin-out"></div>
+
+  <div id="tab-audit" class="hidden">
+    <div class="status" id="st-audit">
+      <span class="dot" id="dot-audit"></span>
+      <span id="msg-audit">Loading audit log&hellip;</span>
+    </div>
+    <div class="tools">
+      <input id="audit-search" type="search" placeholder="Search admin or action&hellip;" autocomplete="off">
+      <span class="count" id="audit-count"></span>
+    </div>
+    <div class="table-scroll" id="audit-out"></div>
+  </div>
 </div>
 
 <script src="/auth.js"></script>
@@ -178,9 +197,98 @@ $('#admin-out').addEventListener('click', async (e) => {
     if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || ('HTTP ' + res.status));
     ROWS = ROWS.filter(r => String(r.id) !== String(id));
     renderTable();
+    // Keep the audit tab from showing stale data if it's already been viewed.
+    if (auditLoadedOnce) loadAuditLog();
   }catch(e){
     alert('Could not delete: ' + e.message);
     btn.disabled = false; btn.textContent = 'Delete';
+  }
+});
+
+// ---- Audit log tab ----
+let AUDIT = [];
+let auditLoadedOnce = false;
+
+function setAuditStatus(state, msg){
+  $('#dot-audit').className = 'dot ' + state;
+  $('#msg-audit').textContent = msg;
+}
+
+function summarizeDetails(entry){
+  if (!entry.details) return '';
+  let d;
+  try { d = JSON.parse(entry.details); } catch { return entry.details.slice(0, 80); }
+  if (entry.action === 'delete_submission'){
+    const who = d.full_name || '?';
+    const what = [d.commander, d.partner].filter(Boolean).join(' + ') || 'no commander';
+    return who + ' — ' + what + ' (game ' + d.game + ', total ' + d.game_total + ')';
+  }
+  return JSON.stringify(d).slice(0, 120);
+}
+
+function renderAuditTable(){
+  const q = $('#audit-search').value.trim().toLowerCase();
+  const list = !q ? AUDIT : AUDIT.filter(a =>
+    (a.admin_email || '').toLowerCase().includes(q) ||
+    (a.action || '').toLowerCase().includes(q)
+  );
+
+  $('#audit-count').textContent = list.length === AUDIT.length
+    ? AUDIT.length + ' entries'
+    : list.length + ' of ' + AUDIT.length + ' entries';
+
+  const host = $('#audit-out');
+  if (!list.length){
+    host.innerHTML = '<p class="empty">No audit log entries match.</p>';
+    return;
+  }
+
+  host.innerHTML =
+      '<table class="stand"><thead><tr>'
+    +   '<th>When</th><th>Admin</th><th>Action</th><th>Target</th><th>Details</th>'
+    + '</tr></thead><tbody>'
+    + list.map(a => (
+        '<tr>'
+        + '<td>' + esc(a.created_at || '') + '</td>'
+        + '<td>' + esc(a.admin_email || '') + '</td>'
+        + '<td>' + esc(a.action || '') + '</td>'
+        + '<td>' + esc(a.target_table || '') + (a.target_id ? ' #' + esc(a.target_id) : '') + '</td>'
+        + '<td>' + esc(summarizeDetails(a)) + '</td>'
+        + '</tr>'
+      )).join('')
+    + '</tbody></table>';
+}
+
+async function loadAuditLog(){
+  setAuditStatus('', 'Loading audit log…');
+  try{
+    const token = await ClerkRef.session.getToken();
+    const res = await fetch('/api/admin/audit-log', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || ('HTTP ' + res.status));
+    AUDIT = await res.json();
+    renderAuditTable();
+    setAuditStatus('live', AUDIT.length + ' entries loaded');
+  }catch(e){
+    console.error('[admin audit]', e);
+    setAuditStatus('warn', 'Could not load audit log — ' + e.message);
+  }
+}
+
+$('#audit-search').addEventListener('input', () => {
+  clearTimeout(window.__auditSearchT);
+  window.__auditSearchT = setTimeout(renderAuditTable, 120);
+});
+
+$('#admin-tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.chip');
+  if (!btn) return;
+  const tab = btn.dataset.tab;
+  $('#admin-tabs').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+  $('#tab-submissions').classList.toggle('hidden', tab !== 'submissions');
+  $('#tab-audit').classList.toggle('hidden', tab !== 'audit');
+  if (tab === 'audit' && !auditLoadedOnce){
+    auditLoadedOnce = true;
+    loadAuditLog();
   }
 });
 

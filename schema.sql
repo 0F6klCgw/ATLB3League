@@ -50,8 +50,8 @@ CREATE TABLE point_submissions (
 
   game_total            INTEGER NOT NULL DEFAULT 0 CHECK (game_total BETWEEN -20 AND 20),
 
-  -- Captured from the Cf-Access-Authenticated-User-Email header once
-  -- Cloudflare Access gates /formsubmission + /api/submissions.
+  -- The submitter's verified email, looked up server-side from their
+  -- Clerk session (src/index.js) — never trusted from the client.
   submitted_by_email    TEXT NOT NULL DEFAULT 'legacy-import' CHECK (length(submitted_by_email) BETWEEN 1 AND 254),
 
   commander             TEXT CHECK (length(commander) <= 200),
@@ -64,3 +64,20 @@ CREATE TABLE point_submissions (
 
 CREATE INDEX idx_point_submissions_submission_id ON point_submissions (submission_id);
 CREATE INDEX idx_point_submissions_created_at ON point_submissions (created_at);
+
+-- Audit trail for admin actions (currently: deleting a submission).
+-- `details` holds a JSON snapshot of whatever was affected, so a mistaken
+-- delete is at least recoverable by hand from this log even though the
+-- underlying row is gone for good.
+CREATE TABLE admin_audit_log (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+  admin_user_id  TEXT NOT NULL,
+  admin_email    TEXT NOT NULL,
+  action         TEXT NOT NULL,
+  target_table   TEXT NOT NULL,
+  target_id      TEXT,
+  details        TEXT
+);
+
+CREATE INDEX idx_admin_audit_log_created_at ON admin_audit_log (created_at);

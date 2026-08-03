@@ -72,6 +72,9 @@ export default {
     if (deleteMatch && request.method === "DELETE") {
       return handleAdminDelete(request, env, Number(deleteMatch[1]));
     }
+    if (url.pathname === "/api/admin/audit-log" && request.method === "GET") {
+      return handleAdminAuditLog(request, env);
+    }
     return env.ASSETS.fetch(request);
   },
 };
@@ -132,9 +135,29 @@ async function handleAdminList(request, env) {
   return jsonResponse(results);
 }
 
+// Records who did what to which row, and a snapshot of it — so a mistaken
+// delete is at least recoverable by hand from this log even though the row
+// itself is gone. Logging failure doesn't fail the caller's request; it's
+// only ever called after the actual action already succeeded.
+async function logAdminAction(env, { user, action, targetTable, targetId, details }) {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO admin_audit_log (admin_user_id, admin_email, action, target_table, target_id, details)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(user.id, emailOf(user), action, targetTable, String(targetId ?? ""), details ? JSON.stringify(details) : null).run();
+  } catch (e) {
+    console.error("[admin] audit log write failed:", e);
+  }
+}
+
 async function handleAdminDelete(request, env, id) {
-  const { error } = await requireAdmin(request, env);
+  const { error, user } = await requireAdmin(request, env);
   if (error) return error;
+
+  const existing = await env.DB.prepare("SELECT * FROM point_submissions WHERE id = ?").bind(id).first();
+  if (!existing) {
+    return jsonResponse({ error: "Submission not found." }, 404);
+  }
 
   try {
     await env.DB.prepare("DELETE FROM point_submissions WHERE id = ?").bind(id).run();
@@ -142,7 +165,30 @@ async function handleAdminDelete(request, env, id) {
     console.error("[admin] delete failed:", e);
     return jsonResponse({ error: "Could not delete submission." }, 500);
   }
+
+  await logAdminAction(env, {
+    user,
+    action: "delete_submission",
+    targetTable: "point_submissions",
+    targetId: id,
+    details: existing,
+  });
+
   return jsonResponse({ ok: true });
+}
+
+async function handleAdminAuditLog(request, env) {
+  const { error } = await requireAdmin(request, env);
+  if (error) return error;
+
+  const { results } = await env.DB.prepare(
+    `SELECT id, created_at, admin_email, action, target_table, target_id, details
+     FROM admin_audit_log
+     ORDER BY created_at DESC, id DESC
+     LIMIT 500`
+  ).all();
+
+  return jsonResponse(results);
 }
 
 async function handleSubmissions(request, env) {
