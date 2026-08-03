@@ -117,3 +117,9 @@ Worth settling before picking items from §4:
 - Who currently transcribes scores into the Google Sheets, and how often?
 - Where is this actually hosted/deployed?
 - Is there an appetite for player accounts/identity at all, or should this stay a no-login honor-system tool?
+
+## 6. Note on scope drift
+
+This document is now out of date relative to the live app — since it was written, the site moved off Supabase onto Cloudflare Workers + D1 (closing #2), added Clerk-based identity, unified the nav, and added a Commander Dashboard. It's kept as-is here as a historical snapshot of the original review; a refresh covering the current architecture would be a reasonable follow-up.
+
+Separately, if this app is ever offered to other leagues as a platform rather than a single-tenant tool, see [`MULTI_TENANCY_SCOPE.md`](MULTI_TENANCY_SCOPE.md) — that's a distinct, much larger initiative from the incremental items in §4 above.
