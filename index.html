@@ -230,7 +230,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg>
         Points Sheet
       </a>
-      <a class="btn" id="lnk-deck" href="#" target="_blank" rel="noopener">
+      <a class="btn" href="#deck">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
         Points Deck
       </a>
@@ -267,7 +267,7 @@
   <div class="wrap">
     <div class="sec-head">
       <h2>How Scoring Works</h2>
-      <p>Two documents run the league. The <strong>Points Sheet</strong> is your scorecard for the night. The <strong>Points Deck</strong> is the pool of extra goals you can pull and claim on top of it. Both are pulled live from Google Sheets below, so what you see here is always current.</p>
+      <p>Two documents run the league. The <strong>Points Sheet</strong> is your scorecard for the night. The <strong>Points Deck</strong> is the pool of extra goals you can pull and claim on top of it. Both are always current below — the Points Sheet live from Google Sheets, the Points Deck from the league database.</p>
     </div>
     <div class="grid-3">
       <div class="panel">
@@ -314,7 +314,7 @@
     </div>
     <div class="status" id="st-deck">
       <span class="dot" id="dot-deck"></span>
-      <span id="msg-deck">Loading from Google Sheets&hellip;</span>
+      <span id="msg-deck">Loading&hellip;</span>
     </div>
     <div class="tools">
       <input id="deck-search" type="search" placeholder="Search goals &mdash; try &ldquo;monarch&rdquo;, &ldquo;token&rdquo;, &ldquo;graveyard&rdquo;&hellip;" autocomplete="off">
@@ -366,7 +366,7 @@
     <span>&middot;</span>
     <a id="foot-stand" href="#" target="_blank" rel="noopener">Standings</a>
     <a id="foot-sheet" href="#" target="_blank" rel="noopener">Points Sheet</a>
-    <a id="foot-deck" href="#" target="_blank" rel="noopener">Points Deck</a>
+    <a href="#deck">Points Deck</a>
     <span class="pips"><i class="pip w"></i><i class="pip u"></i><i class="pip b"></i><i class="pip r"></i><i class="pip g"></i></span>
   </div>
 </footer>
@@ -381,20 +381,15 @@ const SHEETS = {
     gid: null,
     url: 'https://docs.google.com/spreadsheets/u/0/d/1lag6ja5J0y0BKLWjenUSk1jzlGQ16R4Y/htmlview'
   },
-  deck: {
-    id:  '1aw-229tVDXhJ0tiFc6q-h8I7XvQtUqjaUGHI7_wUoEw',
-    gid: '0',
-    url: 'https://docs.google.com/spreadsheets/d/1aw-229tVDXhJ0tiFc6q-h8I7XvQtUqjaUGHI7_wUoEw/edit?gid=0#gid=0'
-  },
   stand: {
     id:  '1sszrZfmuoPLWId1jezOV5tAaLNXgXYWnT7orTW08Cs4',
     gid: null,
     url: 'https://docs.google.com/spreadsheets/d/1sszrZfmuoPLWId1jezOV5tAaLNXgXYWnT7orTW08Cs4/edit?usp=sharing'
   }
 };
+// Points Deck lives in D1 now (see /api/deck) — no Sheets URL to wire up.
 
 ['lnk-sheet','foot-sheet'].forEach(i => document.getElementById(i).href = SHEETS.points.url);
-['lnk-deck','foot-deck'].forEach(i   => document.getElementById(i).href = SHEETS.deck.url);
 ['lnk-stand','foot-stand'].forEach(i => document.getElementById(i).href = SHEETS.stand.url);
 
 /* =====================================================================
@@ -546,21 +541,12 @@ function renderPoints(cats){
 }
 
 /* =====================================================================
-   PARSER 2 — the Points Deck
-   Columns: Points | Goal | Set Specific
+   The Points Deck now lives in D1 (/api/deck) — this just maps the API's
+   column name (set_name) to the shape the rest of this file already uses
+   (set), so sortDeck/renderDeck/buildFilters below didn't need to change.
    ===================================================================== */
-function parseDeck(grid){
-  const out = [];
-  for (const r of grid){
-    const pts  = (r[0] || '').trim();
-    const goal = (r[1] || '').trim();
-    const set  = (r[2] || '').trim();
-    if (!goal) continue;
-    if (/^points$/i.test(pts) && /^goals?$/i.test(goal)) continue; // header row
-    const n = parseInt(pts, 10);
-    out.push({ pts: isNaN(n) ? 1 : n, goal, set });
-  }
-  return out;
+function mapDeckRows(apiRows){
+  return apiRows.map(r => ({ pts: r.pts, goal: r.goal, set: r.set_name || '' }));
 }
 
 /* One flat list, ordered core-first then by point value, stable within. */
@@ -841,106 +827,6 @@ const FALLBACK_POINTS = [
 ["","Chain Extra Turns.","","DQ"]
 ];
 
-const FALLBACK_DECK = [
-[1,"Win a game with your commander never leaving the command zone.",""],
-[1,"Control 10 or more lands at once.",""],
-[1,"Attack with five or more creatures at the same time.",""],
-[1,"Control a permanent of each color (WUBRG) at the same time.",""],
-[1,"Gain 30 or more life in a single game.",""],
-[1,"Have 10 or more cards in your hand at any point",""],
-[1,"Control 5 or more token creatures at once.",""],
-[1,"Draw 5 or more cards from a single spell or ability.",""],
-[1,"Cast a spell with mana value 10 or greater.",""],
-[1,"Deal 20 or more combat damage to a single opponent in one combat.",""],
-[1,"Control 3 or more planeswalkers at once.",""],
-[1,"Control a creature with 10 or more +1/+1 counters on it.",""],
-[1,"Cast four or more spells in a single turn.",""],
-[1,"Control 20 or more permanents at once.",""],
-[1,"Cast a spell with an X in its mana cost with X of 8 or greater.",""],
-[1,"Control a creature enchanted or equipped by 3 or more Auras/Equipment.",""],
-[1,"Win a game where you were at 10 or fewer life at some point during it.",""],
-[1,"Have every creature you control share a single creature type (minimum 5 creatures).",""],
-[1,"Win a game as the last player still holding cards in hand (all opponents hellbent at the finish).",""],
-[1,"Control a creature with power 10 or greater.",""],
-[1,"Control 5 or more artifacts at once.",""],
-[1,"Control 5 or more enchantments at once.",""],
-[1,"Control 3 or more creatures with power 5 or greater at once.",""],
-[1,"Deal combat damage to each opponent in a single combat.",""],
-[1,"Control a creature that has both flying and trample.",""],
-[1,"Control an Equipment attached to a creature and an Aura attached to a creature at the same time.",""],
-[1,"Win a game in which your commander dealt no combat damage the entire game.",""],
-[1,"Deal the first combat damage to a player in the game (“first blood”).",""],
-[1,"Become the monarch.",""],
-[1,"Cast a spell from exile (foretell, adventure, cast-from-exile effect, or an exiled card).",""],
-[1,"Cast a spell with an alternative cost",""],
-[1,"Have a spell you cast trigger cascade, and cast the cascaded spell.",""],
-[1,"Put a nonland permanent onto the battlefield without casting it.",""],
-[1,"Reanimate a creature card from any graveyard (return it to the battlefield from a graveyard).",""],
-[1,"Have 20 or more cards in your graveyard at once.",""],
-[1,"Mill yourself 5 or more cards at once from a single spell or effect",""],
-[1,"Cast a spell during each of your first three turns of the game.",""],
-[1,"Have 5 or more devotion to a single color (count colored pips on your permanents).",""],
-[1,"Control a creature with menace, or with an evasion keyword, that deals combat damage unblocked.",""],
-[1,"Cast a creature and give it haste, then attack with it the same turn it entered.",""],
-[1,"Cast a spell with flashback, escape, disturb, or a similar keyword that casts it from your graveyard.",""],
-[1,"Sacrifice three or more permanents in a single turn (to any costs or abilities).",""],
-[1,"Win a coin flip or die roll for an in-game effect (a card made you flip/roll, and you got the good result).",""],
-[1,"Goad a creature (force it to attack).",""],
-[1,"Give an opponent something beneficial via one of your cards — cards, mana, life, or a token (“group hug” gift).",""],
-[1,"Get a creature through unblocked using an obscure evasion keyword: horsemanship, shadow, fear, or intimidate.",""],
-[1,"Control a nontoken clone that copies another creature on the battlefield (a permanent with the same name as something else in play).",""],
-[1,"Proliferate.",""],
-[2,"Control a permanent of each color, a token, a planeswalker, and 10+ lands all at the same time.",""],
-[2,"Attack with ten or more creatures at the same time.",""],
-[2,"Control a creature with power 40 or greater.",""],
-[2,"Reduce a single opponent from 40 life to 0 in one turn through combat damage only.",""],
-[2,"Control 30 or more permanents at once.",""],
-[2,"Earn points from at least one 1-point and one 2-point goal in the same league night.",""],
-[2,"Be the monarch at the beginning of your end step (successfully drawing the monarch card) in three separate turns of one game.",""],
-[2,"Steal the monarch from another player via combat damage.",""],
-[2,"Have 10 or more devotion to a single color at once.",""],
-[2,"Have more cards in your graveyard than in your library at the end of a turn.",""],
-[2,"Reanimate an opponent's creature and attack with it.",""],
-[2,"Control 15 or more lands at once.",""],
-[2,"Cast three or more spells from exile in a single game.",""],
-[2,"Return five or more permanents from graveyards to the battlefield over one game.",""],
-[2,"Win a game in which you were the monarch at the moment of victory.",""],
-[2,"Eliminate two players in the same turn.",""],
-[2,"Cast a spell with an X in its mana cost with X of 12 or greater.",""],
-[2,"Deal combat damage to all opponents in a single combat",""],
-[2,"Have 60 or more life at any point in a game.",""],
-[2,"Control 5 or more permanents with counters on them at once.",""],
-[2,"Cast a spell that forces every player to do the same thing symmetrically (mass chaos / group effect — e.g. everyone draws, everyone sacrifices, everyone shuffles in and redraws).",""],
-[2,"Ninjutsu a creature into play (return an unblocked attacker and put a Ninja onto the battlefield attacking), or otherwise swap an attacker for another creature mid-combat.",""],
-[2,"Control one of each “artifact-with-a-purpose” token at the same time: a Treasure, a Clue, and a Food (minimum three different named token types).",""],
-[2,"Resolve a vote (a “will of the council” / “council's dilemma” card where players vote), regardless of the outcome.",""],
-[2,"Control a creature with three or more different keyword abilities on it at once (printed or granted).",""],
-[2,"Control the only nonland permanent on the battlefield at the end of a turn (every other player's board is empty of nonland permanents — “the cheese stands alone”).",""],
-[3,"Win a game in which every creature you controlled at the moment of victory was a token.",""],
-[3,"Control, at the same time, at least one creature with each of these five keywords across your board: flying, trample, deathtouch, lifelink, and vigilance.",""],
-[3,"Win a game in which you never attacked with a creature the entire game.",""],
-[3,"Win a game the turn after being at 5 or fewer life at the start of that turn.",""],
-[3,"Control five permanents that each tap for one distinct color of WUBRG (all five colors represented).",""],
-[3,"Control 10 or more legendary permanents at once.",""],
-[3,"Win a game in which, at the moment of victory, you controlled zero lands.",""],
-[3,"Win a game while at exactly 1 life.",""],
-[3,"Win a game in which the winning damage or effect came from an opponent's own permanent that you controlled or redirected.",""],
-[3,"Win a game on an opponent's turn (you meet a win condition or deliver lethal during a turn that is not yours).",""],
-[1,"Control a Storied board state. Control a Legendary Artifact, Legendary Creature, and Saga at the same time","Hobbit"],
-[1,"Control 5 or more Halfling creatures (Changelings don't count)","Hobbit"],
-[1,"Control 5 or more Dwarf creatures (Changelings don't count)","Hobbit"],
-[1,"Go on 3 or more Adventures (cast three adventure type spells)","Hobbit"],
-[3,"Master of Stories. Control 5 or more sagas at once","Hobbit"],
-[1,"As foretold... Attach a LOTR/Hobbit equipment to the appropriate character (Sting to Bilbo/Frodo/Sam, Orcrist to Thorin, Wizard's Staff to Gandalf, etc)","Hobbit"],
-[1,"Create a horde.. Control 10 or more Treasures","Hobbit"],
-[1,"There and back again... Cast an adventure spell and then later cast it out of exile as a permanent","Hobbit"],
-[2,"Throw it into the fire... Exile or Destroy a non-token Legendary Artifact you control","Hobbit"],
-[1,"Battle of five armies... in a single combat phase, attack with five creatures who share no creature types with each other","Hobbit"],
-[1,"Assemble a host... control 10 or more non-token creatures who share a Creature Type","Hobbit"],
-[1,"Recruitment Center... control 20 or more 1/1 token creatures","Hobbit"],
-[1,"Arrive Precisely When You Mean To... Cast your commander for the first time on Turn 1 or Turn 6","Hobbit"]
-].map(r => [String(r[0]), r[1], r[2]]);
-
 const FALLBACK_STAND = [
 ["Name","Column 1","","","","","","Week 3","Week 4","Week 5","Week 6","Week 7","Week 8","Week 9","Week 10","Week 11","LCQ"],
 ["Will","B",51,51,2,26,25],
@@ -1007,7 +893,7 @@ async function loadAll(bust){
 
   setStatus('stand','',  'Loading from Google Sheets…');
   setStatus('points','', 'Loading from Google Sheets…');
-  setStatus('deck','',   'Loading from Google Sheets…');
+  setStatus('deck','',   'Loading…');
 
   // Standings
   try{
@@ -1037,21 +923,19 @@ async function loadAll(bust){
     setStatus('points','warn','Saved copy (' + stamp() + ') — ' + e.message);
   }
 
-  // Points deck
+  // Points deck — lives in D1 now, not Google Sheets.
   try{
-    const grid = toGrid(await gvizLoad(SHEETS.deck, bust));
-    const list = parseDeck(grid);
-    if (!list.length) throw new Error('sheet returned no usable rows');
+    const res = await fetch('/api/deck');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const list = mapDeckRows(await res.json());
+    if (!list.length) throw new Error('no goals found');
     DECK = list;
     buildFilters();
     renderDeck();
-    setStatus('deck','live','Live from Google Sheets · ' + DECK.length + ' goals · loaded ' + stamp());
+    setStatus('deck','live','Live from the league database · ' + DECK.length + ' goals · loaded ' + stamp());
   }catch(e){
     console.error('[points deck]', e);
-    DECK = parseDeck(FALLBACK_DECK);
-    buildFilters();
-    renderDeck();
-    setStatus('deck','warn','Saved copy (' + stamp() + ') — ' + e.message);
+    setStatus('deck','warn','Could not load the Points Deck — ' + e.message);
   }
 
   btns.forEach(b => { b.disabled = false; b.textContent = 'Refresh'; });

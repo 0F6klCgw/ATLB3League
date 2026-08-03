@@ -75,6 +75,19 @@ export default {
     if (url.pathname === "/api/admin/audit-log" && request.method === "GET") {
       return handleAdminAuditLog(request, env);
     }
+    if (url.pathname === "/api/deck" && request.method === "GET") {
+      return handleDeckList(env);
+    }
+    if (url.pathname === "/api/admin/deck" && request.method === "POST") {
+      return handleAdminDeckCreate(request, env);
+    }
+    const deckMatch = url.pathname.match(/^\/api\/admin\/deck\/(\d+)$/);
+    if (deckMatch && request.method === "PUT") {
+      return handleAdminDeckUpdate(request, env, Number(deckMatch[1]));
+    }
+    if (deckMatch && request.method === "DELETE") {
+      return handleAdminDeckDelete(request, env, Number(deckMatch[1]));
+    }
     return env.ASSETS.fetch(request);
   },
 };
@@ -189,6 +202,130 @@ async function handleAdminAuditLog(request, env) {
   ).all();
 
   return jsonResponse(results);
+}
+
+async function handleDeckList(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT id, pts, goal, set_name FROM points_deck ORDER BY set_name, pts, id`
+  ).all();
+  return jsonResponse(results);
+}
+
+// Shared validation for creating/editing a deck card — same principle as
+// validateRow for submissions: the server decides what's acceptable, not
+// just the D1 CHECK constraints (which are still there as a second layer).
+function validateDeckInput(body) {
+  if (!body || typeof body !== "object") return { error: "Expected an object." };
+
+  const pts = Number(body.pts);
+  if (!Number.isInteger(pts) || pts < 1 || pts > 10) {
+    return { error: "pts must be a whole number from 1 to 10." };
+  }
+
+  const goal = String(body.goal || "").trim();
+  if (!goal || goal.length > 500) {
+    return { error: "goal is required (max 500 chars)." };
+  }
+
+  const set_name = String(body.set_name || "").trim().slice(0, 100);
+
+  return { value: { pts, goal, set_name } };
+}
+
+async function handleAdminDeckCreate(request, env) {
+  const { error, user } = await requireAdmin(request, env);
+  if (error) return error;
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+  const { error: validationError, value } = validateDeckInput(body);
+  if (validationError) return jsonResponse({ error: validationError }, 400);
+
+  let result;
+  try {
+    result = await env.DB.prepare(
+      "INSERT INTO points_deck (pts, goal, set_name) VALUES (?, ?, ?)"
+    ).bind(value.pts, value.goal, value.set_name).run();
+  } catch (e) {
+    console.error("[admin] deck create failed:", e);
+    return jsonResponse({ error: "Could not create card." }, 500);
+  }
+
+  const newId = result.meta.last_row_id;
+  await logAdminAction(env, {
+    user,
+    action: "create_deck_card",
+    targetTable: "points_deck",
+    targetId: newId,
+    details: value,
+  });
+
+  return jsonResponse({ id: newId, ...value });
+}
+
+async function handleAdminDeckUpdate(request, env, id) {
+  const { error, user } = await requireAdmin(request, env);
+  if (error) return error;
+
+  const existing = await env.DB.prepare("SELECT * FROM points_deck WHERE id = ?").bind(id).first();
+  if (!existing) return jsonResponse({ error: "Card not found." }, 404);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+  const { error: validationError, value } = validateDeckInput(body);
+  if (validationError) return jsonResponse({ error: validationError }, 400);
+
+  try {
+    await env.DB.prepare(
+      "UPDATE points_deck SET pts = ?, goal = ?, set_name = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(value.pts, value.goal, value.set_name, id).run();
+  } catch (e) {
+    console.error("[admin] deck update failed:", e);
+    return jsonResponse({ error: "Could not update card." }, 500);
+  }
+
+  await logAdminAction(env, {
+    user,
+    action: "update_deck_card",
+    targetTable: "points_deck",
+    targetId: id,
+    details: { before: existing, after: value },
+  });
+
+  return jsonResponse({ id, ...value });
+}
+
+async function handleAdminDeckDelete(request, env, id) {
+  const { error, user } = await requireAdmin(request, env);
+  if (error) return error;
+
+  const existing = await env.DB.prepare("SELECT * FROM points_deck WHERE id = ?").bind(id).first();
+  if (!existing) return jsonResponse({ error: "Card not found." }, 404);
+
+  try {
+    await env.DB.prepare("DELETE FROM points_deck WHERE id = ?").bind(id).run();
+  } catch (e) {
+    console.error("[admin] deck delete failed:", e);
+    return jsonResponse({ error: "Could not delete card." }, 500);
+  }
+
+  await logAdminAction(env, {
+    user,
+    action: "delete_deck_card",
+    targetTable: "points_deck",
+    targetId: id,
+    details: existing,
+  });
+
+  return jsonResponse({ ok: true });
 }
 
 async function handleSubmissions(request, env) {
