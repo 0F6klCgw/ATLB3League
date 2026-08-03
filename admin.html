@@ -54,6 +54,12 @@
   }
   table.stand td input:focus{outline:none; border-color:var(--gold)}
   table.stand td.pts-cell input{width:56px}
+  .role-select{
+    font:13px system-ui,sans-serif; background:var(--panel-2); border:1px solid var(--line-2);
+    color:var(--ink); padding:6px 8px; border-radius:6px;
+  }
+  .role-select:focus{outline:none; border-color:var(--gold)}
+  .role-select:disabled{opacity:.6}
 </style>
 </head>
 <body>
@@ -101,6 +107,7 @@
     <button type="button" class="chip" data-tab="submissions" aria-pressed="true">Submissions</button>
     <button type="button" class="chip" data-tab="deck" aria-pressed="false">Points Deck</button>
     <button type="button" class="chip" data-tab="audit" aria-pressed="false">Audit Log</button>
+    <button type="button" class="chip hidden" id="users-tab-btn" data-tab="users" aria-pressed="false">Users</button>
   </div>
 
   <div id="tab-submissions">
@@ -143,6 +150,18 @@
       <span class="count" id="audit-count"></span>
     </div>
     <div class="table-scroll" id="audit-out"></div>
+  </div>
+
+  <div id="tab-users" class="hidden">
+    <div class="status" id="st-users">
+      <span class="dot" id="dot-users"></span>
+      <span id="msg-users">Loading users&hellip;</span>
+    </div>
+    <div class="tools">
+      <input id="users-search" type="search" placeholder="Search email or name&hellip;" autocomplete="off">
+      <span class="count" id="users-count"></span>
+    </div>
+    <div class="table-scroll" id="users-out"></div>
   </div>
 </div>
 
@@ -268,6 +287,10 @@ function summarizeDetails(entry){
   }
   if (entry.action === 'update_deck_card' && d.before && d.after){
     return '+' + d.before.pts + ' → +' + d.after.pts + ' — ' + (d.after.goal || '').slice(0, 60);
+  }
+  if (entry.action === 'update_user_role'){
+    const fmt = (r) => r || 'User';
+    return (d.email || '?') + ' — ' + fmt(d.before) + ' → ' + fmt(d.after);
   }
   return JSON.stringify(d).slice(0, 120);
 }
@@ -494,6 +517,103 @@ $('#deck-admin-out').addEventListener('click', async (e) => {
   }
 });
 
+// ---- Users tab (super admin only) ----
+let USERS = [];
+let usersLoadedOnce = false;
+const ROLE_LABELS = { '': 'User', 'admin': 'Admin', 'super_admin': 'Super Admin' };
+
+function setUsersStatus(state, msg){
+  $('#dot-users').className = 'dot ' + state;
+  $('#msg-users').textContent = msg;
+}
+
+function renderUsersTable(){
+  const q = $('#users-search').value.trim().toLowerCase();
+  const list = !q ? USERS : USERS.filter(u =>
+    (u.email || '').toLowerCase().includes(q) || (u.name || '').toLowerCase().includes(q)
+  );
+
+  $('#users-count').textContent = list.length === USERS.length
+    ? USERS.length + ' users'
+    : list.length + ' of ' + USERS.length + ' users';
+
+  const host = $('#users-out');
+  if (!list.length){
+    host.innerHTML = '<p class="empty">No users match.</p>';
+    return;
+  }
+
+  host.innerHTML =
+      '<table class="stand"><thead><tr>'
+    +   '<th>Email</th><th>Name</th><th>Role</th>'
+    + '</tr></thead><tbody>'
+    + list.map(u => (
+        '<tr data-id="' + esc(u.id) + '">'
+        + '<td>' + esc(u.email || '') + '</td>'
+        + '<td>' + esc(u.name || '') + '</td>'
+        + '<td class="num">'
+        +   '<select class="role-select" data-id="' + esc(u.id) + '">'
+        +     Object.keys(ROLE_LABELS).map(r =>
+                '<option value="' + r + '"' + (r === (u.role || '') ? ' selected' : '') + '>' + ROLE_LABELS[r] + '</option>'
+              ).join('')
+        +   '</select>'
+        + '</td>'
+        + '</tr>'
+      )).join('')
+    + '</tbody></table>';
+}
+
+async function loadUsers(){
+  setUsersStatus('', 'Loading users…');
+  try{
+    const token = await ClerkRef.session.getToken();
+    const res = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || ('HTTP ' + res.status));
+    USERS = await res.json();
+    renderUsersTable();
+    setUsersStatus('live', USERS.length + ' users loaded');
+  }catch(e){
+    console.error('[admin users]', e);
+    setUsersStatus('warn', 'Could not load users — ' + e.message);
+  }
+}
+
+$('#users-search').addEventListener('input', () => {
+  clearTimeout(window.__usersSearchT);
+  window.__usersSearchT = setTimeout(renderUsersTable, 120);
+});
+
+$('#users-out').addEventListener('change', async (e) => {
+  const sel = e.target.closest('.role-select');
+  if (!sel) return;
+  const id = sel.dataset.id;
+  const user = USERS.find(u => u.id === id);
+  const newRole = sel.value;
+  const label = user ? (user.email || id) : id;
+  if (!confirm('Set ' + label + '’s role to "' + ROLE_LABELS[newRole] + '"?')){
+    sel.value = user ? (user.role || '') : '';
+    return;
+  }
+
+  sel.disabled = true;
+  try{
+    const token = await ClerkRef.session.getToken();
+    const res = await fetch('/api/admin/users/' + encodeURIComponent(id) + '/role', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ role: newRole }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || ('HTTP ' + res.status));
+    if (user) user.role = newRole;
+    if (auditLoadedOnce) loadAuditLog();
+  }catch(err){
+    alert('Could not update role: ' + err.message);
+    sel.value = user ? (user.role || '') : '';
+  }finally{
+    sel.disabled = false;
+  }
+});
+
 $('#admin-tabs').addEventListener('click', (e) => {
   const btn = e.target.closest('.chip');
   if (!btn) return;
@@ -502,6 +622,7 @@ $('#admin-tabs').addEventListener('click', (e) => {
   $('#tab-submissions').classList.toggle('hidden', tab !== 'submissions');
   $('#tab-deck').classList.toggle('hidden', tab !== 'deck');
   $('#tab-audit').classList.toggle('hidden', tab !== 'audit');
+  $('#tab-users').classList.toggle('hidden', tab !== 'users');
   if (tab === 'audit' && !auditLoadedOnce){
     auditLoadedOnce = true;
     loadAuditLog();
@@ -510,16 +631,23 @@ $('#admin-tabs').addEventListener('click', (e) => {
     deckLoadedOnce = true;
     loadDeckAdmin();
   }
+  if (tab === 'users' && !usersLoadedOnce){
+    usersLoadedOnce = true;
+    loadUsers();
+  }
 });
 
 let loadedOnce = false;
 initClerk((Clerk, signedIn) => {
   ClerkRef = Clerk;
-  const isAdmin = signedIn && Clerk.user?.publicMetadata?.role === 'admin';
+  const role = signedIn ? Clerk.user?.publicMetadata?.role : null;
+  const isAdmin = role === 'admin' || role === 'super_admin';
+  const isSuperAdmin = role === 'super_admin';
 
   $('#authGate').classList.toggle('hidden', signedIn);
   $('#deniedGate').classList.toggle('hidden', !signedIn || isAdmin);
   $('#adminContent').classList.toggle('hidden', !isAdmin);
+  $('#users-tab-btn').classList.toggle('hidden', !isSuperAdmin);
 
   const signInEl = $('#clerkSignIn');
   if (signedIn){

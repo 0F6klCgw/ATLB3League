@@ -88,6 +88,13 @@ export default {
     if (deckMatch && request.method === "DELETE") {
       return handleAdminDeckDelete(request, env, Number(deckMatch[1]));
     }
+    if (url.pathname === "/api/admin/users" && request.method === "GET") {
+      return handleAdminUsersList(request, env);
+    }
+    const userRoleMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/role$/);
+    if (userRoleMatch && request.method === "PUT") {
+      return handleAdminUserRoleUpdate(request, env, userRoleMatch[1]);
+    }
     return env.ASSETS.fetch(request);
   },
 };
@@ -121,15 +128,31 @@ function emailOf(user) {
 
 // Admin status lives in Clerk's publicMetadata (set via the Clerk dashboard
 // or Backend API), not a hardcoded list — adding/removing an admin doesn't
-// need a code change or deploy.
+// need a code change or deploy. super_admin is a strict superset of admin.
 function isAdmin(user) {
-  return user?.publicMetadata?.role === "admin";
+  const role = user?.publicMetadata?.role;
+  return role === "admin" || role === "super_admin";
+}
+
+function isSuperAdmin(user) {
+  return user?.publicMetadata?.role === "super_admin";
 }
 
 async function requireAdmin(request, env) {
   const user = await verifyClerkUser(request, env);
   if (!user) return { error: jsonResponse({ error: "Invalid or expired session — please sign in again." }, 401) };
   if (!isAdmin(user)) return { error: jsonResponse({ error: "Not authorized." }, 403) };
+  return { user };
+}
+
+// Gates the user-management endpoints — listing every Clerk user and
+// changing roles is more sensitive than the regular admin actions (which
+// only ever touch this app's own D1 rows), so it's restricted to super
+// admins rather than every admin.
+async function requireSuperAdmin(request, env) {
+  const user = await verifyClerkUser(request, env);
+  if (!user) return { error: jsonResponse({ error: "Invalid or expired session — please sign in again." }, 401) };
+  if (!isSuperAdmin(user)) return { error: jsonResponse({ error: "Not authorized." }, 403) };
   return { user };
 }
 
@@ -326,6 +349,77 @@ async function handleAdminDeckDelete(request, env, id) {
   });
 
   return jsonResponse({ ok: true });
+}
+
+const USER_ROLES = ["", "admin", "super_admin"];
+
+// User accounts and roles live entirely in Clerk (there's no local `users`
+// table) — these two endpoints go straight to the Clerk Backend API rather
+// than D1, using the same CLERK_SECRET_KEY already used for session
+// verification above.
+async function handleAdminUsersList(request, env) {
+  const { error } = await requireSuperAdmin(request, env);
+  if (error) return error;
+
+  const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
+  const { data: users } = await clerk.users.getUserList({ limit: 200 });
+
+  const list = users.map((u) => ({
+    id: u.id,
+    email: emailOf(u),
+    name: [u.firstName, u.lastName].filter(Boolean).join(" ") || null,
+    role: u.publicMetadata?.role || "",
+  }));
+
+  return jsonResponse(list);
+}
+
+async function handleAdminUserRoleUpdate(request, env, targetUserId) {
+  const { error, user } = await requireSuperAdmin(request, env);
+  if (error) return error;
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+  const role = String(body.role ?? "");
+  if (!USER_ROLES.includes(role)) {
+    return jsonResponse({ error: "role must be '', 'admin', or 'super_admin'." }, 400);
+  }
+
+  // Guard against a super admin locking themselves out with no one left to
+  // undo it — that would require going into the Clerk dashboard by hand.
+  if (targetUserId === user.id && role !== "super_admin") {
+    return jsonResponse({ error: "You can't remove your own super admin access." }, 400);
+  }
+
+  const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
+  let targetUser;
+  try {
+    targetUser = await clerk.users.getUser(targetUserId);
+  } catch {
+    return jsonResponse({ error: "User not found." }, 404);
+  }
+  const beforeRole = targetUser.publicMetadata?.role || "";
+
+  try {
+    await clerk.users.updateUserMetadata(targetUserId, { publicMetadata: { role } });
+  } catch (e) {
+    console.error("[admin] role update failed:", e);
+    return jsonResponse({ error: "Could not update role." }, 500);
+  }
+
+  await logAdminAction(env, {
+    user,
+    action: "update_user_role",
+    targetTable: "clerk_user",
+    targetId: targetUserId,
+    details: { email: emailOf(targetUser), before: beforeRole, after: role },
+  });
+
+  return jsonResponse({ id: targetUserId, role });
 }
 
 async function handleSubmissions(request, env) {

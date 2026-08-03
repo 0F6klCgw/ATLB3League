@@ -67,7 +67,8 @@ async function initClerk(onRender){
   function syncAdminLink(signedIn){
     const navLinks = document.getElementById("nav-links");
     if (!navLinks) return;
-    const isAdmin = signedIn && Clerk.user?.publicMetadata?.role === "admin";
+    const role = signedIn ? Clerk.user?.publicMetadata?.role : null;
+    const isAdmin = role === "admin" || role === "super_admin";
     let link = navLinks.querySelector("#nav-admin-link");
     if (isAdmin && !link){
       link = document.createElement("a");
