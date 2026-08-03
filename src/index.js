@@ -1,14 +1,18 @@
 // Worker entry point: serves the static site (index.html, formsubmission.html,
 // theme.css) via the ASSETS binding, and handles POST /api/submissions by
-// validating each row against the known scoring table and writing it to D1.
+// validating each row against the live scoring rules (in D1, editable from
+// the admin center) and writing it to D1.
 //
-// The server is the authority here, not the client: every point column is
-// checked against POINT_VALUES (0 or its fixed value, never anything else),
-// and game_total/dq are recomputed from the validated flags rather than
-// trusting whatever the client sent. This is what closes the "RLS always
-// true" gap from the old Supabase setup (see PROJECT_PLAN.md #2) — the D1
-// schema's CHECK constraints are a second, independent layer of the same
-// guarantee.
+// The server is the authority here, not the client: every submitted point
+// is checked against the scoring_items row it claims to be (0/fixed value
+// never trusted from the client), and game_total/dq are recomputed from the
+// validated set rather than trusting whatever the client sent. This is what
+// closes the "RLS always true" gap from the old Supabase setup (see
+// PROJECT_PLAN.md #2). Scoring items being admin-editable means D1 can no
+// longer statically CHECK each one's exact value the way point_submissions'
+// old fixed columns did — submission_points' CHECK is a coarse sanity bound
+// instead, and the Worker (checked against the live scoring_items table) is
+// the real authority for scoring now.
 //
 // Identity: the client attaches a Clerk session token (Authorization:
 // Bearer <token>), which we verify against Clerk's own keys — not a
@@ -17,44 +21,7 @@
 
 import { createClerkClient, verifyToken } from "@clerk/backend";
 
-const POINT_VALUES = {
-  // Standard points
-  draw: 1,
-  win_no_gc_solring: 1,
-  alt_win: 1,
-  remove_counter_2plus: 1,
-  stop_win: 1,
-  protect_player: 1,
-  cast_cmdr_4x: 1,
-  recent_ub_uw_cmdr: 1,
-  seat4_loss_or_3pod: 1,
-  coolest_card: 1,
-  // Rotating points
-  convoke_improvise_2: 1,
-  team_creatures_5: 1,
-  prepared_adventure_3: 1,
-  lightning_bolted: 1,
-  lightning_bolt_range: 1,
-  // Bad Guy points
-  win_before_t6: -4,
-  stax_4plus: -2,
-  infinite_combo_win: -1,
-  edhtop16_cmdr: -1,
-  infinite_loop_fail: -6,
-  acted_jerk: -2,
-};
-
-const DQ_FLAGS = ["mass_land_denial", "banned_card", "chain_extra_turns"];
 const PLACEMENTS = [0, 1, 2, 3, 4];
-
-const COLUMNS = [
-  "submission_id", "full_name", "league_date", "game", "placement",
-  ...Object.keys(POINT_VALUES),
-  ...DQ_FLAGS,
-  "dq", "game_total", "submitted_by_email",
-  "commander", "commander_scryfall_id", "commander_image_url",
-  "partner", "partner_scryfall_id", "partner_image_url",
-];
 
 export default {
   async fetch(request, env) {
@@ -94,6 +61,29 @@ export default {
     const userRoleMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/role$/);
     if (userRoleMatch && request.method === "PUT") {
       return handleAdminUserRoleUpdate(request, env, userRoleMatch[1]);
+    }
+    if (url.pathname === "/api/scoring" && request.method === "GET") {
+      return handleScoringList(env);
+    }
+    if (url.pathname === "/api/admin/scoring/categories" && request.method === "POST") {
+      return handleAdminScoringCategoryCreate(request, env);
+    }
+    const catMatch = url.pathname.match(/^\/api\/admin\/scoring\/categories\/(\d+)$/);
+    if (catMatch && request.method === "PUT") {
+      return handleAdminScoringCategoryUpdate(request, env, Number(catMatch[1]));
+    }
+    if (catMatch && request.method === "DELETE") {
+      return handleAdminScoringCategoryDelete(request, env, Number(catMatch[1]));
+    }
+    if (url.pathname === "/api/admin/scoring/items" && request.method === "POST") {
+      return handleAdminScoringItemCreate(request, env);
+    }
+    const itemMatch = url.pathname.match(/^\/api\/admin\/scoring\/items\/(\d+)$/);
+    if (itemMatch && request.method === "PUT") {
+      return handleAdminScoringItemUpdate(request, env, Number(itemMatch[1]));
+    }
+    if (itemMatch && request.method === "DELETE") {
+      return handleAdminScoringItemDelete(request, env, Number(itemMatch[1]));
     }
     return env.ASSETS.fetch(request);
   },
@@ -351,6 +341,288 @@ async function handleAdminDeckDelete(request, env, id) {
   return jsonResponse({ ok: true });
 }
 
+// ---- Scoring data (categories + items) ----
+// Public read (formsubmission.html and printsheet.html both fetch this to
+// render the live rule set), admin-only writes.
+
+async function loadScoringCategoriesWithItems(env) {
+  const [{ results: categories }, { results: items }] = await Promise.all([
+    env.DB.prepare(
+      `SELECT id, title, kind, sort_order FROM scoring_categories ORDER BY sort_order, id`
+    ).all(),
+    env.DB.prepare(
+      `SELECT id, category_id, val, dq, desc, sort_order FROM scoring_items ORDER BY sort_order, id`
+    ).all(),
+  ]);
+
+  const byCategory = new Map();
+  for (const it of items) {
+    if (!byCategory.has(it.category_id)) byCategory.set(it.category_id, []);
+    byCategory.get(it.category_id).push({ id: it.id, val: it.val, dq: !!it.dq, desc: it.desc, sort_order: it.sort_order });
+  }
+
+  return categories.map((c) => ({
+    id: c.id,
+    title: c.title,
+    kind: c.kind,
+    sort_order: c.sort_order,
+    items: byCategory.get(c.id) || [],
+  }));
+}
+
+async function handleScoringList(env) {
+  return jsonResponse(await loadScoringCategoriesWithItems(env));
+}
+
+// Every scoring item currently live, keyed by id — fetched once per
+// /api/submissions request and used to validate/resolve what the client
+// submitted (never trusting its claimed point value or dq-ness directly).
+async function loadScoringItemsMap(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT id, val, dq, desc FROM scoring_items`
+  ).all();
+  return new Map(results.map((it) => [it.id, it]));
+}
+
+function validateScoringCategoryInput(body) {
+  if (!body || typeof body !== "object") return { error: "Expected an object." };
+
+  const title = String(body.title || "").trim();
+  if (!title || title.length > 200) return { error: "title is required (max 200 chars)." };
+
+  const kind = String(body.kind || "");
+  if (!["pos", "neg"].includes(kind)) return { error: "kind must be 'pos' or 'neg'." };
+
+  const sort_order = Number.isInteger(Number(body.sort_order)) ? Number(body.sort_order) : 0;
+
+  return { value: { title, kind, sort_order } };
+}
+
+function validateScoringItemInput(body) {
+  if (!body || typeof body !== "object") return { error: "Expected an object." };
+
+  const category_id = Number(body.category_id);
+  if (!Number.isInteger(category_id) || category_id <= 0) {
+    return { error: "category_id is required." };
+  }
+
+  const dq = !!body.dq;
+  const val = dq ? 0 : Number(body.val);
+  if (!dq && (!Number.isInteger(val) || val < -20 || val > 20 || val === 0)) {
+    return { error: "val must be a non-zero whole number from -20 to 20 (unless dq is set)." };
+  }
+
+  const desc = String(body.desc || "").trim();
+  if (!desc || desc.length > 500) return { error: "desc is required (max 500 chars)." };
+
+  const sort_order = Number.isInteger(Number(body.sort_order)) ? Number(body.sort_order) : 0;
+
+  return { value: { category_id, val, dq: dq ? 1 : 0, desc, sort_order } };
+}
+
+async function handleAdminScoringCategoryCreate(request, env) {
+  const { error, user } = await requireAdmin(request, env);
+  if (error) return error;
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+  const { error: validationError, value } = validateScoringCategoryInput(body);
+  if (validationError) return jsonResponse({ error: validationError }, 400);
+
+  let result;
+  try {
+    result = await env.DB.prepare(
+      "INSERT INTO scoring_categories (title, kind, sort_order) VALUES (?, ?, ?)"
+    ).bind(value.title, value.kind, value.sort_order).run();
+  } catch (e) {
+    console.error("[admin] scoring category create failed:", e);
+    return jsonResponse({ error: "Could not create category." }, 500);
+  }
+
+  const newId = result.meta.last_row_id;
+  await logAdminAction(env, {
+    user,
+    action: "create_scoring_category",
+    targetTable: "scoring_categories",
+    targetId: newId,
+    details: value,
+  });
+
+  return jsonResponse({ id: newId, ...value, items: [] });
+}
+
+async function handleAdminScoringCategoryUpdate(request, env, id) {
+  const { error, user } = await requireAdmin(request, env);
+  if (error) return error;
+
+  const existing = await env.DB.prepare("SELECT * FROM scoring_categories WHERE id = ?").bind(id).first();
+  if (!existing) return jsonResponse({ error: "Category not found." }, 404);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+  const { error: validationError, value } = validateScoringCategoryInput(body);
+  if (validationError) return jsonResponse({ error: validationError }, 400);
+
+  try {
+    await env.DB.prepare(
+      "UPDATE scoring_categories SET title = ?, kind = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(value.title, value.kind, value.sort_order, id).run();
+  } catch (e) {
+    console.error("[admin] scoring category update failed:", e);
+    return jsonResponse({ error: "Could not update category." }, 500);
+  }
+
+  await logAdminAction(env, {
+    user,
+    action: "update_scoring_category",
+    targetTable: "scoring_categories",
+    targetId: id,
+    details: { before: existing, after: value },
+  });
+
+  return jsonResponse({ id, ...value });
+}
+
+async function handleAdminScoringCategoryDelete(request, env, id) {
+  const { error, user } = await requireAdmin(request, env);
+  if (error) return error;
+
+  const existing = await env.DB.prepare("SELECT * FROM scoring_categories WHERE id = ?").bind(id).first();
+  if (!existing) return jsonResponse({ error: "Category not found." }, 404);
+
+  // Deleting a category cascades to its items (schema FK), so the audit
+  // snapshot captures both — otherwise the deleted items would be
+  // unrecoverable even from the log.
+  const { results: items } = await env.DB.prepare("SELECT * FROM scoring_items WHERE category_id = ?").bind(id).all();
+
+  try {
+    await env.DB.prepare("DELETE FROM scoring_categories WHERE id = ?").bind(id).run();
+  } catch (e) {
+    console.error("[admin] scoring category delete failed:", e);
+    return jsonResponse({ error: "Could not delete category. Remove its items first if this fails." }, 500);
+  }
+
+  await logAdminAction(env, {
+    user,
+    action: "delete_scoring_category",
+    targetTable: "scoring_categories",
+    targetId: id,
+    details: { ...existing, items },
+  });
+
+  return jsonResponse({ ok: true });
+}
+
+async function handleAdminScoringItemCreate(request, env) {
+  const { error, user } = await requireAdmin(request, env);
+  if (error) return error;
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+  const { error: validationError, value } = validateScoringItemInput(body);
+  if (validationError) return jsonResponse({ error: validationError }, 400);
+
+  const category = await env.DB.prepare("SELECT id FROM scoring_categories WHERE id = ?").bind(value.category_id).first();
+  if (!category) return jsonResponse({ error: "Category not found." }, 404);
+
+  let result;
+  try {
+    result = await env.DB.prepare(
+      "INSERT INTO scoring_items (category_id, val, dq, desc, sort_order) VALUES (?, ?, ?, ?, ?)"
+    ).bind(value.category_id, value.val, value.dq, value.desc, value.sort_order).run();
+  } catch (e) {
+    console.error("[admin] scoring item create failed:", e);
+    return jsonResponse({ error: "Could not create item." }, 500);
+  }
+
+  const newId = result.meta.last_row_id;
+  await logAdminAction(env, {
+    user,
+    action: "create_scoring_item",
+    targetTable: "scoring_items",
+    targetId: newId,
+    details: value,
+  });
+
+  return jsonResponse({ id: newId, ...value });
+}
+
+async function handleAdminScoringItemUpdate(request, env, id) {
+  const { error, user } = await requireAdmin(request, env);
+  if (error) return error;
+
+  const existing = await env.DB.prepare("SELECT * FROM scoring_items WHERE id = ?").bind(id).first();
+  if (!existing) return jsonResponse({ error: "Item not found." }, 404);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+  const { error: validationError, value } = validateScoringItemInput(body);
+  if (validationError) return jsonResponse({ error: validationError }, 400);
+
+  const category = await env.DB.prepare("SELECT id FROM scoring_categories WHERE id = ?").bind(value.category_id).first();
+  if (!category) return jsonResponse({ error: "Category not found." }, 404);
+
+  try {
+    await env.DB.prepare(
+      "UPDATE scoring_items SET category_id = ?, val = ?, dq = ?, desc = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(value.category_id, value.val, value.dq, value.desc, value.sort_order, id).run();
+  } catch (e) {
+    console.error("[admin] scoring item update failed:", e);
+    return jsonResponse({ error: "Could not update item." }, 500);
+  }
+
+  await logAdminAction(env, {
+    user,
+    action: "update_scoring_item",
+    targetTable: "scoring_items",
+    targetId: id,
+    details: { before: existing, after: value },
+  });
+
+  return jsonResponse({ id, ...value });
+}
+
+async function handleAdminScoringItemDelete(request, env, id) {
+  const { error, user } = await requireAdmin(request, env);
+  if (error) return error;
+
+  const existing = await env.DB.prepare("SELECT * FROM scoring_items WHERE id = ?").bind(id).first();
+  if (!existing) return jsonResponse({ error: "Item not found." }, 404);
+
+  try {
+    await env.DB.prepare("DELETE FROM scoring_items WHERE id = ?").bind(id).run();
+  } catch (e) {
+    console.error("[admin] scoring item delete failed:", e);
+    return jsonResponse({ error: "Could not delete item." }, 500);
+  }
+
+  await logAdminAction(env, {
+    user,
+    action: "delete_scoring_item",
+    targetTable: "scoring_items",
+    targetId: id,
+    details: existing,
+  });
+
+  return jsonResponse({ ok: true });
+}
+
 const USER_ROLES = ["", "admin", "super_admin"];
 
 // User accounts and roles live entirely in Clerk (there's no local `users`
@@ -442,15 +714,43 @@ async function handleSubmissions(request, env) {
     return jsonResponse({ error: "Expected a non-empty array of game rows." }, 400);
   }
 
+  const itemsMap = await loadScoringItemsMap(env);
+
   const validatedRows = [];
   for (const row of rows) {
-    const { row: validated, error } = validateRow(row, submitted_by_email);
+    const { row: validated, error } = validateRow(row, submitted_by_email, itemsMap);
     if (error) return jsonResponse({ error }, 400);
     validatedRows.push(validated);
   }
 
+  // Each row needs its own generated point_submissions id before its
+  // submission_points children can reference it, so these can't all go in
+  // one D1 batch() — a handful of sequential round trips (one game night
+  // is at most 3 rows) is not worth the complexity of avoiding.
   try {
-    await env.DB.batch(validatedRows.map((row) => insertStatement(env, row)));
+    for (const row of validatedRows) {
+      const result = await env.DB.prepare(
+        `INSERT INTO point_submissions
+           (submission_id, full_name, league_date, game, placement, dq, game_total,
+            submitted_by_email, commander, commander_scryfall_id, commander_image_url,
+            partner, partner_scryfall_id, partner_image_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        row.submission_id, row.full_name, row.league_date, row.game, row.placement, row.dq, row.game_total,
+        row.submitted_by_email, row.commander, row.commander_scryfall_id, row.commander_image_url,
+        row.partner, row.partner_scryfall_id, row.partner_image_url
+      ).run();
+
+      const pointSubmissionId = result.meta.last_row_id;
+      if (row.points.length) {
+        await env.DB.batch(row.points.map((p) =>
+          env.DB.prepare(
+            `INSERT INTO submission_points (point_submission_id, item_id, item_desc, points_awarded, is_dq)
+             VALUES (?, ?, ?, ?, ?)`
+          ).bind(pointSubmissionId, p.item_id, p.item_desc, p.points_awarded, p.is_dq)
+        ));
+      }
+    }
   } catch (e) {
     console.error("[submissions] D1 write failed:", e);
     return jsonResponse({ error: "Could not save submission. Please try again." }, 500);
@@ -505,7 +805,7 @@ async function handleCommanders(env) {
   return jsonResponse(list);
 }
 
-function validateRow(row, submitted_by_email) {
+function validateRow(row, submitted_by_email, itemsMap) {
   if (!row || typeof row !== "object") return { error: "Each row must be an object." };
 
   const full_name = String(row.full_name || "").trim();
@@ -526,25 +826,31 @@ function validateRow(row, submitted_by_email) {
 
   const league_date = row.league_date ? String(row.league_date).slice(0, 10) : null;
 
-  const points = {};
-  for (const [key, val] of Object.entries(POINT_VALUES)) {
-    const submitted = Number(row[key]) || 0;
-    if (submitted !== 0 && submitted !== val) {
-      return { error: `${key} must be 0 or ${val}.` };
-    }
-    points[key] = submitted;
-  }
-
-  const dqFlags = {};
+  // The client sends which scoring items it claims were checked, as a list
+  // of ids — never a value or dq-ness, both of which are always resolved
+  // here from the live scoring_items table, not the client's say-so.
+  const rawIds = Array.isArray(row.points) ? row.points : [];
+  const seen = new Set();
+  const points = [];
   let anyDq = false;
-  for (const key of DQ_FLAGS) {
-    const on = !!row[key];
-    dqFlags[key] = on ? 1 : 0;
-    if (on) anyDq = true;
+  let pointsTotal = 0;
+  for (const rawId of rawIds) {
+    const itemId = Number(rawId);
+    if (!Number.isInteger(itemId) || seen.has(itemId)) continue;
+    seen.add(itemId);
+    const item = itemsMap.get(itemId);
+    if (!item) return { error: `Unknown scoring item id ${itemId}.` };
+    if (item.dq) {
+      anyDq = true;
+      points.push({ item_id: itemId, item_desc: item.desc, points_awarded: 0, is_dq: 1 });
+    } else {
+      pointsTotal += item.val;
+      points.push({ item_id: itemId, item_desc: item.desc, points_awarded: item.val, is_dq: 0 });
+    }
   }
 
   // Authoritative total — the client's own game_total is ignored.
-  const game_total = placement + Object.values(points).reduce((a, b) => a + b, 0);
+  const game_total = placement + pointsTotal;
 
   const truncate = (v, max) => (v == null ? null : String(v).slice(0, max));
 
@@ -555,8 +861,7 @@ function validateRow(row, submitted_by_email) {
       league_date,
       game,
       placement,
-      ...points,
-      ...dqFlags,
+      points,
       dq: anyDq ? 1 : 0,
       game_total,
       submitted_by_email: submitted_by_email.slice(0, 254),
@@ -568,10 +873,4 @@ function validateRow(row, submitted_by_email) {
       partner_image_url: truncate(row.partner_image_url, 500),
     },
   };
-}
-
-function insertStatement(env, row) {
-  const placeholders = COLUMNS.map(() => "?").join(", ");
-  const sql = `INSERT INTO point_submissions (${COLUMNS.join(", ")}) VALUES (${placeholders})`;
-  return env.DB.prepare(sql).bind(...COLUMNS.map((c) => row[c] ?? null));
 }

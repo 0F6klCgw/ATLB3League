@@ -186,11 +186,14 @@ initClerk((Clerk, signedIn) => {
   }
 });
 
-// SECTIONS / PLACEMENTS / GAMES now come from the shared /scoring-data.js
-// (see its script tag above) so the digital form and the printable blank
-// sheet can never drift apart.
+// PLACEMENTS / GAMES come from the shared /scoring-data.js (see its script
+// tag above). SECTIONS (the actual point categories/items) instead comes
+// from D1 via /api/scoring — editable from the admin center's Scoring tab
+// — so it's fetched once at load and re-rendered in, rather than baked
+// into a static file.
+let SECTIONS = [];
 
-// state[game] = { placement:0, points:{key:bool} }
+// state[game] = { placement:0, points:{itemId:bool} }
 const state = {};
 GAMES.forEach(g => state[g] = { placement:0, points:{} });
 let activeGame = 1;
@@ -236,13 +239,13 @@ function buildPanel(g){
     s.className = "section";
     s.innerHTML = `<h2>${sec.title}</h2>`;
     sec.items.forEach(it=>{
-      const on = !!state[g].points[it.key];
+      const on = !!state[g].points[it.id];
       const cls = it.dq ? "dq" : (it.val<0 ? "neg" : "pos");
       const row = document.createElement("div");
       row.className = `pt ${cls}` + (on ? " active":"");
       const valTxt = it.dq ? "DQ" : (it.val>0 ? "+"+it.val : it.val);
       row.innerHTML = `<div class="badge">${valTxt}</div><div class="desc">${it.desc}</div>`;
-      row.onclick = ()=>{ state[g].points[it.key] = !state[g].points[it.key]; renderAll(); };
+      row.onclick = ()=>{ state[g].points[it.id] = !state[g].points[it.id]; renderAll(); };
       s.appendChild(row);
     });
     panel.appendChild(s);
@@ -250,15 +253,16 @@ function buildPanel(g){
   return panel;
 }
 
-function itemByKey(key){
-  for(const sec of SECTIONS) for(const it of sec.items) if(it.key===key) return it;
+function itemById(id){
+  for(const sec of SECTIONS) for(const it of sec.items) if(it.id===id) return it;
   return null;
 }
 function gameTotal(g){
   let total = state[g].placement, dq = false;
-  for(const key in state[g].points){
-    if(!state[g].points[key]) continue;
-    const it = itemByKey(key);
+  for(const id in state[g].points){
+    if(!state[g].points[id]) continue;
+    const it = itemById(Number(id));
+    if(!it) continue;
     if(it.dq) dq = true; else total += it.val;
   }
   return { total, dq };
@@ -383,7 +387,9 @@ function gameHasInput(g){
   return Object.values(state[g].points).some(Boolean);
 }
 
-// Build one Supabase row per game that has any input.
+// Build one point_submissions row per game that has any input. The server
+// resolves each checked item's actual val/dq from D1 itself — this only
+// sends which item ids were checked, never a point value.
 function buildRows(){
   const name = $("#fullName").value.trim();
   const date = $("#leagueDate").value || null;
@@ -408,11 +414,8 @@ function buildRows(){
       placement: state[g].placement,
       dq: t.dq,
       game_total: t.total,
+      points: Object.keys(state[g].points).filter(id => state[g].points[id]).map(Number),
     };
-    for(const sec of SECTIONS) for(const it of sec.items){
-      const on = !!state[g].points[it.key];
-      row[it.key] = it.dq ? on : (on ? it.val : 0);
-    }
     rows.push(row);
   });
   return rows;
@@ -457,6 +460,20 @@ $("#resetBtn").onclick = ()=> doReset(false);
 // default date = today
 $("#leagueDate").value = new Date().toISOString().slice(0,10);
 renderAll();
+
+// Scoring rules load from D1 — render once immediately (placement only,
+// so the page isn't blank) and again once the real categories arrive.
+(async () => {
+  try{
+    const res = await fetch("/api/scoring");
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    SECTIONS = await res.json();
+    renderAll();
+  }catch(e){
+    console.error("[scoring]", e);
+    toast("Could not load scoring rules — try refreshing.", true);
+  }
+})();
 </script>
 <script src="/nav.js"></script>
 </body>

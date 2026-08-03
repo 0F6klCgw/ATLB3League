@@ -160,8 +160,7 @@ function ptsLabel(it){
   return it.val > 0 ? "+" + it.val : String(it.val);
 }
 
-function renderSheet(){
-  const sections = [PLACEMENT_SECTION, ...SECTIONS];
+function renderSheet(sections){
   const host = document.getElementById("sheet-body");
   host.innerHTML = sections.map(sec => (
     '<tr class="cat-row"><td colspan="5">' + esc(sec.title) + '</td></tr>'
@@ -176,7 +175,23 @@ function renderSheet(){
       )).join('')
   )).join('');
 }
-renderSheet();
+
+// The point categories/items come from D1 (editable from the admin
+// center's Scoring tab) — placement stays a fixed structural concept
+// (finishing position), so it's the only part still hardcoded above.
+renderSheet([PLACEMENT_SECTION]);
+(async () => {
+  try{
+    const res = await fetch("/api/scoring");
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const SECTIONS = await res.json();
+    renderSheet([PLACEMENT_SECTION, ...SECTIONS]);
+  }catch(e){
+    console.error("[scoring]", e);
+    document.getElementById("sheet-body").insertAdjacentHTML("beforeend",
+      '<tr><td colspan="5" style="color:#a00">Could not load the current scoring rules — try refreshing.</td></tr>');
+  }
+})();
 </script>
 <script src="/auth.js"></script>
 <script src="/nav.js"></script>

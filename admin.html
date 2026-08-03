@@ -60,6 +60,20 @@
   }
   .role-select:focus{outline:none; border-color:var(--gold)}
   .role-select:disabled{opacity:.6}
+  .scoring-cat{border:1px solid var(--line-2); border-radius:10px; padding:14px 16px; margin-bottom:16px; background:var(--panel-2)}
+  .scoring-cat-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px}
+  .scoring-cat-head h3{margin:0; font-size:16px; font-family:system-ui,sans-serif; color:var(--gold-2)}
+  .scoring-cat-head .spacer{flex:1}
+  .kind-tag{font:600 11px/1 system-ui,sans-serif; letter-spacing:.04em; text-transform:uppercase; padding:4px 8px; border-radius:5px}
+  .kind-tag.pos{background:rgba(127,192,154,.14); color:var(--good)}
+  .kind-tag.neg{background:rgba(224,96,90,.14); color:var(--bad)}
+  .scoring-cat-head input[type="text"], .scoring-cat-head select{
+    font:14px/1.4 system-ui,sans-serif; background:var(--panel); border:1px solid var(--line-2);
+    color:var(--ink); padding:8px 10px; border-radius:8px;
+  }
+  .scoring-items-table td.dq-cell{text-align:center}
+  .add-item-row input[type="text"]{width:100%}
+  .add-item-row input[type="number"]{width:60px}
 </style>
 </head>
 <body>
@@ -106,6 +120,7 @@
   <div class="chips" id="admin-tabs">
     <button type="button" class="chip" data-tab="submissions" aria-pressed="true">Submissions</button>
     <button type="button" class="chip" data-tab="deck" aria-pressed="false">Points Deck</button>
+    <button type="button" class="chip" data-tab="scoring" aria-pressed="false">Scoring</button>
     <button type="button" class="chip" data-tab="audit" aria-pressed="false">Audit Log</button>
     <button type="button" class="chip hidden" id="users-tab-btn" data-tab="users" aria-pressed="false">Users</button>
   </div>
@@ -138,6 +153,22 @@
       <span class="count" id="deck-admin-count"></span>
     </div>
     <div class="table-scroll" id="deck-admin-out"></div>
+  </div>
+
+  <div id="tab-scoring" class="hidden">
+    <div class="status" id="st-scoring">
+      <span class="dot" id="dot-scoring"></span>
+      <span id="msg-scoring">Loading scoring rules&hellip;</span>
+    </div>
+    <form id="scoring-cat-form" class="deck-form">
+      <input id="cat-add-title" type="text" placeholder="New category title&hellip;" required style="flex:2 1 300px">
+      <select id="cat-add-kind">
+        <option value="pos">Positive</option>
+        <option value="neg">Negative</option>
+      </select>
+      <button type="submit" class="btn primary">Add category</button>
+    </form>
+    <div id="scoring-out"></div>
   </div>
 
   <div id="tab-audit" class="hidden">
@@ -291,6 +322,20 @@ function summarizeDetails(entry){
   if (entry.action === 'update_user_role'){
     const fmt = (r) => r || 'User';
     return (d.email || '?') + ' — ' + fmt(d.before) + ' → ' + fmt(d.after);
+  }
+  if (entry.action === 'create_scoring_category' || entry.action === 'delete_scoring_category'){
+    const n = Array.isArray(d.items) ? d.items.length : 0;
+    return (d.title || '') + (n ? ' (' + n + ' item(s))' : '');
+  }
+  if (entry.action === 'update_scoring_category' && d.before && d.after){
+    return (d.before.title || '') + ' → ' + (d.after.title || '');
+  }
+  if (entry.action === 'create_scoring_item' || entry.action === 'delete_scoring_item'){
+    return (d.dq ? 'DQ' : (d.val > 0 ? '+' + d.val : d.val)) + ' — ' + (d.desc || '').slice(0, 80);
+  }
+  if (entry.action === 'update_scoring_item' && d.before && d.after){
+    const fmt = (x) => x.dq ? 'DQ' : (x.val > 0 ? '+' + x.val : x.val);
+    return fmt(d.before) + ' → ' + fmt(d.after) + ' — ' + (d.after.desc || '').slice(0, 60);
   }
   return JSON.stringify(d).slice(0, 120);
 }
@@ -517,6 +562,284 @@ $('#deck-admin-out').addEventListener('click', async (e) => {
   }
 });
 
+// ---- Scoring tab ----
+let SCORING = [];
+let scoringLoadedOnce = false;
+let editingCategoryId = null;
+let editingItemId = null;
+
+function setScoringStatus(state, msg){
+  $('#dot-scoring').className = 'dot ' + state;
+  $('#msg-scoring').textContent = msg;
+}
+
+function renderScoring(){
+  const host = $('#scoring-out');
+  if (!SCORING.length){
+    host.innerHTML = '<p class="empty">No scoring categories yet — add one above.</p>';
+    return;
+  }
+
+  host.innerHTML = SCORING.map(cat => {
+    const head = cat.id === editingCategoryId
+      ? (
+          '<input type="text" class="e-cat-title" value="' + esc(cat.title) + '" style="flex:2 1 300px">'
+          + '<select class="e-cat-kind">'
+          +   '<option value="pos"' + (cat.kind === 'pos' ? ' selected' : '') + '>Positive</option>'
+          +   '<option value="neg"' + (cat.kind === 'neg' ? ' selected' : '') + '>Negative</option>'
+          + '</select>'
+          + '<span class="spacer"></span>'
+          + '<button type="button" class="edit-btn save-cat-btn" data-id="' + cat.id + '">Save</button>'
+          + '<button type="button" class="del-btn cancel-cat-btn" data-id="' + cat.id + '">Cancel</button>'
+        )
+      : (
+          '<h3>' + esc(cat.title) + '</h3>'
+          + '<span class="kind-tag ' + cat.kind + '">' + (cat.kind === 'pos' ? 'Positive' : 'Negative') + '</span>'
+          + '<span class="spacer"></span>'
+          + '<button type="button" class="edit-btn edit-cat-btn" data-id="' + cat.id + '">Edit</button>'
+          + '<button type="button" class="del-btn del-cat-btn" data-id="' + cat.id + '">Delete category</button>'
+        );
+
+    const itemRows = cat.items.map(it => {
+      if (it.id === editingItemId){
+        return '<tr data-id="' + it.id + '">'
+          + '<td class="pts-cell"><input type="number" min="-20" max="20" class="e-item-val" value="' + it.val + '" ' + (it.dq ? 'disabled' : '') + '></td>'
+          + '<td><input type="text" class="e-item-desc" value="' + esc(it.desc) + '"></td>'
+          + '<td class="dq-cell"><input type="checkbox" class="e-item-dq" ' + (it.dq ? 'checked' : '') + '></td>'
+          + '<td class="num">'
+          +   '<button type="button" class="edit-btn save-item-btn" data-id="' + it.id + '">Save</button>'
+          +   '<button type="button" class="del-btn cancel-item-btn" data-id="' + it.id + '">Cancel</button>'
+          + '</td>'
+          + '</tr>';
+      }
+      return '<tr data-id="' + it.id + '">'
+        + '<td class="num">' + (it.dq ? 'DQ' : (it.val > 0 ? '+' + it.val : it.val)) + '</td>'
+        + '<td>' + esc(it.desc) + '</td>'
+        + '<td class="dq-cell">' + (it.dq ? '✓' : '') + '</td>'
+        + '<td class="num">'
+        +   '<button type="button" class="edit-btn edit-item-btn" data-id="' + it.id + '">Edit</button>'
+        +   '<button type="button" class="del-btn del-item-btn" data-id="' + it.id + '">Delete</button>'
+        + '</td>'
+        + '</tr>';
+    }).join('');
+
+    return '<div class="scoring-cat" data-id="' + cat.id + '">'
+      +   '<div class="scoring-cat-head">' + head + '</div>'
+      +   '<table class="stand scoring-items-table"><thead><tr>'
+      +     '<th>Val</th><th>Description</th><th>DQ</th><th></th>'
+      +   '</tr></thead><tbody>'
+      +     itemRows
+      +     '<tr class="add-item-row" data-cat="' + cat.id + '">'
+      +       '<td class="pts-cell"><input type="number" min="-20" max="20" class="add-item-val" placeholder="+1"></td>'
+      +       '<td><input type="text" class="add-item-desc" placeholder="Description…"></td>'
+      +       '<td class="dq-cell"><input type="checkbox" class="add-item-dq"></td>'
+      +       '<td class="num"><button type="button" class="edit-btn add-item-btn" data-cat="' + cat.id + '">Add item</button></td>'
+      +     '</tr>'
+      +   '</tbody></table>'
+      + '</div>';
+  }).join('');
+}
+
+async function loadScoring(){
+  setScoringStatus('', 'Loading scoring rules…');
+  try{
+    const res = await fetch('/api/scoring');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    SCORING = await res.json();
+    renderScoring();
+    const itemCount = SCORING.reduce((n, c) => n + c.items.length, 0);
+    setScoringStatus('live', SCORING.length + ' categories, ' + itemCount + ' items loaded');
+  }catch(e){
+    console.error('[admin scoring]', e);
+    setScoringStatus('warn', 'Could not load scoring rules — ' + e.message);
+  }
+}
+
+$('#scoring-cat-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const title = $('#cat-add-title').value.trim();
+  const kind = $('#cat-add-kind').value;
+  if (!title) return;
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  try{
+    const token = await ClerkRef.session.getToken();
+    const res = await fetch('/api/admin/scoring/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ title, kind, sort_order: SCORING.length }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || ('HTTP ' + res.status));
+    const created = await res.json();
+    SCORING.push(created);
+    renderScoring();
+    $('#cat-add-title').value = '';
+    if (auditLoadedOnce) loadAuditLog();
+  }catch(err){
+    alert('Could not add category: ' + err.message);
+  }finally{
+    submitBtn.disabled = false;
+  }
+});
+
+$('#scoring-out').addEventListener('click', async (e) => {
+  const editCat = e.target.closest('.edit-cat-btn');
+  const cancelCat = e.target.closest('.cancel-cat-btn');
+  const saveCat = e.target.closest('.save-cat-btn');
+  const delCat = e.target.closest('.del-cat-btn');
+  const editItem = e.target.closest('.edit-item-btn');
+  const cancelItem = e.target.closest('.cancel-item-btn');
+  const saveItem = e.target.closest('.save-item-btn');
+  const delItem = e.target.closest('.del-item-btn');
+  const addItem = e.target.closest('.add-item-btn');
+
+  if (editCat){ editingCategoryId = Number(editCat.dataset.id); renderScoring(); return; }
+  if (cancelCat){ editingCategoryId = null; renderScoring(); return; }
+
+  if (saveCat){
+    const id = Number(saveCat.dataset.id);
+    const panel = saveCat.closest('.scoring-cat');
+    const title = panel.querySelector('.e-cat-title').value.trim();
+    const kind = panel.querySelector('.e-cat-kind').value;
+    if (!title){ alert('Title is required.'); return; }
+
+    saveCat.disabled = true; saveCat.textContent = 'Saving…';
+    try{
+      const token = await ClerkRef.session.getToken();
+      const cat = SCORING.find(c => c.id === id);
+      const res = await fetch('/api/admin/scoring/categories/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ title, kind, sort_order: cat ? cat.sort_order : 0 }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || ('HTTP ' + res.status));
+      const updated = await res.json();
+      SCORING = SCORING.map(c => c.id === id ? { ...c, title: updated.title, kind: updated.kind } : c);
+      editingCategoryId = null;
+      renderScoring();
+      if (auditLoadedOnce) loadAuditLog();
+    }catch(err){
+      alert('Could not save category: ' + err.message);
+      saveCat.disabled = false; saveCat.textContent = 'Save';
+    }
+    return;
+  }
+
+  if (delCat){
+    const id = Number(delCat.dataset.id);
+    const cat = SCORING.find(c => c.id === id);
+    const n = cat ? cat.items.length : 0;
+    if (!confirm('Delete "' + (cat ? cat.title : '#' + id) + '"' + (n ? ' and its ' + n + ' item(s)' : '') + '? This cannot be undone.')) return;
+
+    delCat.disabled = true; delCat.textContent = 'Deleting…';
+    try{
+      const token = await ClerkRef.session.getToken();
+      const res = await fetch('/api/admin/scoring/categories/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+      if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || ('HTTP ' + res.status));
+      SCORING = SCORING.filter(c => c.id !== id);
+      renderScoring();
+      if (auditLoadedOnce) loadAuditLog();
+    }catch(err){
+      alert('Could not delete category: ' + err.message);
+      delCat.disabled = false; delCat.textContent = 'Delete category';
+    }
+    return;
+  }
+
+  if (editItem){ editingItemId = Number(editItem.dataset.id); renderScoring(); return; }
+  if (cancelItem){ editingItemId = null; renderScoring(); return; }
+
+  if (saveItem){
+    const id = Number(saveItem.dataset.id);
+    const tr = saveItem.closest('tr');
+    const catPanel = saveItem.closest('.scoring-cat');
+    const category_id = Number(catPanel.dataset.id);
+    const dq = tr.querySelector('.e-item-dq').checked;
+    const val = dq ? 0 : Number(tr.querySelector('.e-item-val').value);
+    const desc = tr.querySelector('.e-item-desc').value.trim();
+    if (!desc){ alert('Description is required.'); return; }
+    if (!dq && (!val || val < -20 || val > 20)){ alert('Val must be a non-zero number from -20 to 20 (or check DQ).'); return; }
+
+    saveItem.disabled = true; saveItem.textContent = 'Saving…';
+    try{
+      const token = await ClerkRef.session.getToken();
+      const cat = SCORING.find(c => c.id === category_id);
+      const existing = cat ? cat.items.find(i => i.id === id) : null;
+      const res = await fetch('/api/admin/scoring/items/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ category_id, val, dq, desc, sort_order: existing ? existing.sort_order : 0 }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || ('HTTP ' + res.status));
+      const updated = await res.json();
+      SCORING = SCORING.map(c => c.id !== category_id ? c : {
+        ...c, items: c.items.map(i => i.id === id ? { ...i, val: updated.val, dq: !!updated.dq, desc: updated.desc } : i)
+      });
+      editingItemId = null;
+      renderScoring();
+      if (auditLoadedOnce) loadAuditLog();
+    }catch(err){
+      alert('Could not save item: ' + err.message);
+      saveItem.disabled = false; saveItem.textContent = 'Save';
+    }
+    return;
+  }
+
+  if (delItem){
+    const id = Number(delItem.dataset.id);
+    const catPanel = delItem.closest('.scoring-cat');
+    const category_id = Number(catPanel.dataset.id);
+    const cat = SCORING.find(c => c.id === category_id);
+    const item = cat ? cat.items.find(i => i.id === id) : null;
+    if (!confirm('Delete "' + (item ? item.desc.slice(0, 60) : '#' + id) + '"? This cannot be undone.')) return;
+
+    delItem.disabled = true; delItem.textContent = 'Deleting…';
+    try{
+      const token = await ClerkRef.session.getToken();
+      const res = await fetch('/api/admin/scoring/items/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+      if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || ('HTTP ' + res.status));
+      SCORING = SCORING.map(c => c.id !== category_id ? c : { ...c, items: c.items.filter(i => i.id !== id) });
+      renderScoring();
+      if (auditLoadedOnce) loadAuditLog();
+    }catch(err){
+      alert('Could not delete item: ' + err.message);
+      delItem.disabled = false; delItem.textContent = 'Delete';
+    }
+    return;
+  }
+
+  if (addItem){
+    const category_id = Number(addItem.dataset.cat);
+    const row = addItem.closest('tr');
+    const dq = row.querySelector('.add-item-dq').checked;
+    const val = dq ? 0 : Number(row.querySelector('.add-item-val').value);
+    const desc = row.querySelector('.add-item-desc').value.trim();
+    if (!desc){ alert('Description is required.'); return; }
+    if (!dq && (!val || val < -20 || val > 20)){ alert('Val must be a non-zero number from -20 to 20 (or check DQ).'); return; }
+
+    addItem.disabled = true;
+    try{
+      const token = await ClerkRef.session.getToken();
+      const cat = SCORING.find(c => c.id === category_id);
+      const res = await fetch('/api/admin/scoring/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ category_id, val, dq, desc, sort_order: cat ? cat.items.length : 0 }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || ('HTTP ' + res.status));
+      const created = await res.json();
+      SCORING = SCORING.map(c => c.id !== category_id ? c : { ...c, items: [...c.items, created] });
+      renderScoring();
+      if (auditLoadedOnce) loadAuditLog();
+    }catch(err){
+      alert('Could not add item: ' + err.message);
+    }finally{
+      addItem.disabled = false;
+    }
+  }
+});
+
 // ---- Users tab (super admin only) ----
 let USERS = [];
 let usersLoadedOnce = false;
@@ -621,6 +944,7 @@ $('#admin-tabs').addEventListener('click', (e) => {
   $('#admin-tabs').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
   $('#tab-submissions').classList.toggle('hidden', tab !== 'submissions');
   $('#tab-deck').classList.toggle('hidden', tab !== 'deck');
+  $('#tab-scoring').classList.toggle('hidden', tab !== 'scoring');
   $('#tab-audit').classList.toggle('hidden', tab !== 'audit');
   $('#tab-users').classList.toggle('hidden', tab !== 'users');
   if (tab === 'audit' && !auditLoadedOnce){
@@ -630,6 +954,10 @@ $('#admin-tabs').addEventListener('click', (e) => {
   if (tab === 'deck' && !deckLoadedOnce){
     deckLoadedOnce = true;
     loadDeckAdmin();
+  }
+  if (tab === 'scoring' && !scoringLoadedOnce){
+    scoringLoadedOnce = true;
+    loadScoring();
   }
   if (tab === 'users' && !usersLoadedOnce){
     usersLoadedOnce = true;
