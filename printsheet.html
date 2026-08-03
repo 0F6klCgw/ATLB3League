@@ -14,54 +14,64 @@
   type="text/javascript"
 ></script>
 <style>
+  :root{ --fit: 1; }
+
   .page-head{max-width:900px;margin:0 auto;padding:28px 16px 4px}
   .page-head h1{font-size:26px;color:var(--gold-2);font-family:"Trajan Pro","Optima","Palatino Linotype",Georgia,serif}
   .page-head p{margin:8px 0 0;color:var(--ink-dim);font-size:13px;font-family:system-ui,sans-serif}
-  .page-actions{max-width:900px;margin:14px auto 0;padding:0 16px;display:flex;gap:10px;align-items:center}
+  .page-actions{max-width:900px;margin:14px auto 0;padding:0 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .fit-warning{font:13px/1.4 system-ui,sans-serif;color:var(--bad)}
 
   /* The sheet itself previews exactly as it will print — light paper, not
-     the site's dark theme — so there's no surprise switch when you hit
-     Print. Everything below this point is scoped to #sheet. */
+     the site's dark theme, at the exact width the printed page's content
+     area will be — so there's no surprise switch when you hit Print, and
+     no mismatch between what gets measured on screen and what actually
+     prints. #sheet-frame is purely decorative screen chrome (shadow,
+     rounding, a scroll viewport for narrow screens); #sheet itself is the
+     real printable content. Every size below that affects vertical space
+     scales with --fit, set by fitToOnePage() below once the real item
+     count is known, so a growing rule set (scoring is admin-editable)
+     always lands on one page instead of quietly spilling onto a second. */
+  #sheet-frame{
+    width:min(7.7in, 100%); margin:18px auto 40px; overflow-x:auto;
+    border-radius:10px; box-shadow:0 20px 44px rgba(0,0,0,.4);
+  }
   #sheet{
-    max-width:900px;margin:18px auto 40px;padding:28px 32px;
-    background:#fff;color:#111;border-radius:10px;
+    width:7.7in; padding:28px 32px;
+    background:#fff;color:#111;
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    box-shadow:0 20px 44px rgba(0,0,0,.4);
   }
   #sheet h2{
-    font-size:20px;margin:0 0 2px;font-family:"Trajan Pro","Optima","Palatino Linotype",Georgia,serif;
+    font-size:calc(17px * var(--fit));margin:0 0 2px;font-family:"Trajan Pro","Optima","Palatino Linotype",Georgia,serif;
   }
-  #sheet .sub{font-size:12px;color:#555;margin:0 0 16px}
-  .meta-row{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+  #sheet .sub{font-size:calc(12px * var(--fit));color:#555;margin:0 0 calc(10px * var(--fit))}
+  .meta-row{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:calc(10px * var(--fit))}
   .meta-field{flex:1 1 180px;display:flex;flex-direction:column;gap:3px}
-  .meta-field label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#777}
+  .meta-field label{font-size:calc(10px * var(--fit));text-transform:uppercase;letter-spacing:.05em;color:#777}
   .meta-field input{
-    font:15px/1.3 inherit;border:none;border-bottom:1.5px solid #111;padding:4px 2px;color:#111;background:transparent;
+    font-size:calc(15px * var(--fit));line-height:1.3;border:none;border-bottom:1.5px solid #111;
+    padding:4px 2px;color:#111;background:transparent;font-family:inherit;
   }
   .meta-field input:focus{outline:none;border-color:#8a6a1f}
 
-  table.sheet-table{width:100%;border-collapse:collapse;font-size:12.5px}
-  table.sheet-table th, table.sheet-table td{border:1px solid #999;padding:5px 7px;vertical-align:middle}
-  table.sheet-table thead th{background:#eee;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:#333}
+  table.sheet-table{width:100%;border-collapse:collapse;font-size:calc(10.5px * var(--fit))}
+  table.sheet-table th, table.sheet-table td{border:1px solid #999;padding:calc(2.5px * var(--fit)) calc(6px * var(--fit));vertical-align:middle}
+  table.sheet-table thead th{background:#eee;text-transform:uppercase;letter-spacing:.03em;color:#333}
   table.sheet-table th.game-col, table.sheet-table td.chk{width:34px;text-align:center}
   table.sheet-table th.pts-col, table.sheet-table td.pts{width:40px;text-align:center;font-weight:700;white-space:nowrap}
-  tr.cat-row td{background:#f3f1ea;font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;padding-top:8px;padding-bottom:8px}
+  tr.cat-row td{
+    background:#f3f1ea;font-weight:700;font-size:calc(11.5px * var(--fit));text-transform:uppercase;letter-spacing:.03em;
+    padding-top:calc(4px * var(--fit));padding-bottom:calc(4px * var(--fit));
+  }
   tr.total-row td{font-weight:700;background:#f8f6ef}
-  td.desc{font-size:12px;line-height:1.35}
-  .box{width:18px;height:18px;border:1.4px solid #333;margin:0 auto;border-radius:3px}
-  .fillin{display:block;border-bottom:1.2px solid #333;min-height:16px}
+  td.desc{font-size:calc(12px * var(--fit));line-height:1.35}
+  .box{width:calc(13px * var(--fit));height:calc(13px * var(--fit));border:1.4px solid #333;margin:0 auto;border-radius:3px}
+  .fillin{display:block;border-bottom:1.2px solid #333;min-height:calc(16px * var(--fit))}
 
   @media print{
     body{background:#fff}
     nav, .page-head, .page-actions{display:none !important}
-    #sheet{box-shadow:none;margin:0;padding:0;max-width:none;border-radius:0}
-    #sheet h2{font-size:17px}
-    #sheet .sub{margin-bottom:10px}
-    .meta-row{margin-bottom:10px}
-    table.sheet-table{font-size:10.5px}
-    table.sheet-table th, table.sheet-table td{padding:2.5px 6px}
-    tr.cat-row td{padding-top:4px;padding-bottom:4px}
-    .box{width:13px;height:13px}
+    #sheet-frame{box-shadow:none;margin:0;width:auto;overflow:visible;border-radius:0}
     @page{margin:0.4in}
   }
 </style>
@@ -98,42 +108,45 @@
 </div>
 <div class="page-actions">
   <button type="button" class="btn primary" onclick="window.print()">Print</button>
+  <span class="fit-warning hidden" id="fitWarning">⚠ This has grown too long to fit one page even at minimum size — it'll print onto a second page. Consider trimming a scoring item or two.</span>
 </div>
 
-<div id="sheet">
-  <h2>ATL B3 Commander League — Points Sheet</h2>
-  <p class="sub">Season 5 · Standard points every night · Rotating points change on a schedule · Bad Guy points subtract · DQ = disqualified from the game</p>
+<div id="sheet-frame">
+  <div id="sheet">
+    <h2>ATL B3 Commander League — Points Sheet</h2>
+    <p class="sub">Season 5 · Standard points every night · Rotating points change on a schedule · Bad Guy points subtract · DQ = disqualified from the game</p>
 
-  <div class="meta-row">
-    <div class="meta-field"><label>Player Name</label><input type="text"></div>
-    <div class="meta-field"><label>Date</label><input type="text"></div>
-    <div class="meta-field" style="flex:0 1 120px"><label>Season</label><input type="text" value="5"></div>
+    <div class="meta-row">
+      <div class="meta-field"><label>Player Name</label><input type="text"></div>
+      <div class="meta-field"><label>Date</label><input type="text"></div>
+      <div class="meta-field" style="flex:0 1 120px"><label>Season</label><input type="text" value="5"></div>
+    </div>
+
+    <table class="sheet-table">
+      <thead>
+        <tr>
+          <th class="pts-col">Pts</th>
+          <th>Category / Item</th>
+          <th class="game-col">G1</th>
+          <th class="game-col">G2</th>
+          <th class="game-col">G3</th>
+        </tr>
+      </thead>
+      <tbody id="sheet-body"></tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="2">Game total</td>
+          <td class="chk"><span class="fillin"></span></td>
+          <td class="chk"><span class="fillin"></span></td>
+          <td class="chk"><span class="fillin"></span></td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="2">Night total (add all three games)</td>
+          <td colspan="3"><span class="fillin"></span></td>
+        </tr>
+      </tfoot>
+    </table>
   </div>
-
-  <table class="sheet-table">
-    <thead>
-      <tr>
-        <th class="pts-col">Pts</th>
-        <th>Category / Item</th>
-        <th class="game-col">G1</th>
-        <th class="game-col">G2</th>
-        <th class="game-col">G3</th>
-      </tr>
-    </thead>
-    <tbody id="sheet-body"></tbody>
-    <tfoot>
-      <tr class="total-row">
-        <td colspan="2">Game total</td>
-        <td class="chk"><span class="fillin"></span></td>
-        <td class="chk"><span class="fillin"></span></td>
-        <td class="chk"><span class="fillin"></span></td>
-      </tr>
-      <tr class="total-row">
-        <td colspan="2">Night total (add all three games)</td>
-        <td colspan="3"><span class="fillin"></span></td>
-      </tr>
-    </tfoot>
-  </table>
 </div>
 
 <script src="/scoring-data.js"></script>
@@ -176,10 +189,35 @@ function renderSheet(sections){
   )).join('');
 }
 
+// Scoring items are admin-editable now, so the item count isn't fixed —
+// shrink font-size/padding/box-size (via the --fit custom property, see
+// the stylesheet) until the sheet's real height fits one Letter page at
+// the @page margins set above. #sheet's width already matches the
+// printed content area exactly, so this measurement is accurate to what
+// will actually print, not an approximation.
+const PAGE_HEIGHT_PX = 965; // Letter minus 0.4in top+bottom @page margins (~979px), with a small safety buffer
+const MIN_FIT = 0.6;
+
+function fitToOnePage(){
+  const sheet = document.getElementById("sheet");
+  let fit = 1;
+  document.documentElement.style.setProperty("--fit", fit);
+  let height = sheet.getBoundingClientRect().height;
+
+  for (let i = 0; i < 8 && height > PAGE_HEIGHT_PX && fit > MIN_FIT; i++){
+    fit = Math.max(MIN_FIT, fit * (PAGE_HEIGHT_PX / height) * 0.985);
+    document.documentElement.style.setProperty("--fit", fit);
+    height = sheet.getBoundingClientRect().height;
+  }
+
+  document.getElementById("fitWarning").classList.toggle("hidden", height <= PAGE_HEIGHT_PX);
+}
+
 // The point categories/items come from D1 (editable from the admin
 // center's Scoring tab) — placement stays a fixed structural concept
 // (finishing position), so it's the only part still hardcoded above.
 renderSheet([PLACEMENT_SECTION]);
+fitToOnePage();
 (async () => {
   try{
     const res = await fetch("/api/scoring");
@@ -191,6 +229,7 @@ renderSheet([PLACEMENT_SECTION]);
     document.getElementById("sheet-body").insertAdjacentHTML("beforeend",
       '<tr><td colspan="5" style="color:#a00">Could not load the current scoring rules — try refreshing.</td></tr>');
   }
+  fitToOnePage();
 })();
 </script>
 <script src="/auth.js"></script>
