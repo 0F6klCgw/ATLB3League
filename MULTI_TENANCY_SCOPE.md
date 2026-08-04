@@ -46,13 +46,13 @@ This needs a spike too: confirm Organizations' current pricing/limits at the Cle
 
 ## 4. Configurable scoring engine
 
-This is the single biggest product-design lift, bigger than the infrastructure work above. Today, `POINT_VALUES`, `DQ_FLAGS`, `PLACEMENTS`, and `SECTIONS` are hardcoded JS constants specific to ATL B3's house rules, duplicated across `formsubmission.html`, `src/index.js`, and `schema.sql` (already tracked as a drift risk in [#4](https://github.com/0F6klCgw/ATLB3League/issues/4)).
+**Substantially further along than when this was first scoped.** Scoring categories/items (the point values and descriptions themselves) have moved out of hardcoded JS constants and into D1 (`scoring_categories`/`scoring_items` tables), with a real admin UI (`admin.html`'s Scoring tab) to add/edit/delete them — no code deploy needed to change a league's rules anymore. `POINT_VALUES`/`DQ_FLAGS`/the static `SECTIONS` constant are gone from the codebase entirely (closed [#4](https://github.com/0F6klCgw/ATLB3League/issues/4)). The Worker's validation already works the "look up this league's rules, validate against those" way this section originally called for — it's just not *yet* keyed by league, since there's only one tenant.
 
-For multi-tenancy, these need to become **per-league data**, not code:
-- A scoring-rules schema flexible enough to express ATL B3's actual rules (three tiers — Standard/Rotating/Bad Guy — fixed point values, a 4-tier placement scale) *and* plausibly different house rules another league might run (different tiers, different point values, maybe no "Bad Guy" concept at all, a different placement scale).
-- The Worker's validation (`validateRow`) changes from "check against the one hardcoded `POINT_VALUES`" to "look up this league's rules, validate against those" — same authoritative-server-side principle as today, just data-driven instead of constant-driven.
-- The Commander Dashboard's win definition ([#6](https://github.com/0F6klCgw/ATLB3League/issues/6), `placement === 4`) folds into this same effort — "what counts as a win" becomes part of a league's configured rules instead of a second hardcoded assumption.
-- Risk to manage deliberately: don't over-build a generic rules DSL before seeing a second real league's actual house rules. Design against ATL B3 plus at least one other concrete example, not an imagined abstraction.
+What's still missing for actual multi-tenancy, now a narrower gap than it was:
+- **Scope every scoring table by league.** `scoring_categories`/`scoring_items`/`submission_points` need a `league_id` (Option A) or to live in a per-league database (Option B, §2) — right now there's exactly one implicit "league" (whichever rows happen to be in the one database). The CRUD logic and admin UI already exist; this is a schema/routing change, not a rebuild.
+- **`PLACEMENTS` (the 4-tier placement scale) deliberately stayed hardcoded**, not moved into D1 alongside points — it's structurally tied to `point_submissions.placement`'s `CHECK` constraint and the `game_total` calculation in a way the freely-editable point categories weren't. A league with a genuinely different placement scale (not just different point values) still isn't supported. Tracked as an open question in `PROJECT_PLAN.md` §5.
+- The Commander Dashboard's win definition ([#6](https://github.com/0F6klCgw/ATLB3League/issues/6), `placement === 4`) is downstream of the same placement-scale gap.
+- Risk to manage deliberately, still true: don't over-build a generic rules DSL before seeing a second real league's actual house rules. The current `scoring_categories`/`scoring_items` shape (category → items, each with a point value or DQ flag) was designed against ATL B3's actual rules, not an imagined abstraction — validate it against one other concrete league's rules before assuming it generalizes.
 
 ## 5. Configurable branding
 
@@ -65,12 +65,12 @@ Mechanically, the simplest approach: the Worker reads the requesting league's th
 
 ## 6. Platform admin surface
 
-The actual "manage from within the platform" deliverable — today there is no admin UI at all; management happens by hand-editing files and running SQL directly. This is realistically its own application, arguably larger than the current player-facing site:
-- League creation flow (name, subdomain/custom domain, initial scoring rules, branding).
-- Scoring-rules editor (CRUD over the config from §4).
-- Membership management (invite players, assign league-admin roles) — layers on top of Clerk Organizations from §3.
-- Submission moderation (review/void submissions, the trust/moderation gap already tracked in the original `PROJECT_PLAN.md` §4.2) — more important here than for a single hobby league, since a platform operator can't personally eyeball every league's data the way this session did for ATL B3.
-- Billing/subscription management, if this is monetized (a Stripe integration, most likely).
+**A real admin UI now exists** (`admin.html`) — this section originally assumed there was none. For the single ATL B3 tenant, it already covers: reviewing/deleting submissions, a full scoring-rules editor (add/edit/delete categories and items), Points Deck management, an audit log of every admin action, and super-admin-gated user role management. The "manage from within the platform" deliverable this section scoped is largely *built*, just single-tenant — the gap is extending it to be multi-tenant-aware, not building it from scratch:
+- Every existing admin view/mutation needs to scope to "the requesting league" once leagues are plural (layers on top of whatever §2 lands on for data isolation) — same shape of change as §4's scoring tables.
+- League creation flow (name, subdomain/custom domain, initial scoring rules, branding) — genuinely new, nothing like this exists since there's only ever been one league.
+- Membership management (invite players, assign league-admin roles) — layers on top of Clerk Organizations from §3; today's admin/super-admin roles are global (one Clerk instance, one implicit league), not per-league.
+- Submission moderation exists today (Submissions tab); more important at platform scale than for a single hobby league, since a platform operator can't personally eyeball every league's data the way this session did for ATL B3.
+- Billing/subscription management, if this is monetized (a Stripe integration, most likely) — still entirely open.
 
 ## 7. Domain/DNS strategy
 
@@ -82,7 +82,7 @@ Two models, not mutually exclusive:
 
 Whatever shape §2 lands on, ATL B3 becomes the first tenant, not a special case:
 - Its D1 data (already isolated in its own database) becomes "league #1" under Option B with no data migration needed — it already *is* a per-tenant database.
-- Its hardcoded scoring rules (§4) and branding (§5) get extracted into the new config format as the reference example the multi-tenant schema is designed against.
+- Its scoring rules are already extracted into a config-like format (D1's `scoring_categories`/`scoring_items`, §4) — becoming multi-tenant is a matter of scoping those tables by league, not extracting them from code for the first time. Branding (§5) is still hardcoded and needs the extraction §4's scoring rules already went through.
 - Its Clerk instance/organization becomes the first org under whatever platform-level Clerk setup §3 lands on — may require re-parenting existing users, worth checking Clerk's supported migration path for this.
 
 ## 9. Cost model
@@ -96,9 +96,9 @@ Needs real numbers before committing, but the shape to check:
 ## 10. Suggested phasing
 
 1. **Spike** the §2 binding/redeploy mechanics for real (a throwaway second D1 database + a scripted redeploy, timed end-to-end) before designing anything else — this is the one section of this doc that could invalidate the rest.
-2. Extract ATL B3's scoring rules and branding into the config shapes from §4/§5, with ATL B3 still running as a single tenant against those configs (no multi-tenant infra yet) — proves the config design against a real league before multiplying it.
-3. Stand up the per-league D1 + Clerk Organization wiring (§2/§3) with ATL B3 as tenant #1 and one synthetic second tenant, to prove isolation actually holds.
-4. Build the minimum admin surface (§6) needed to onboard a second *real* league by hand through the platform, not through direct file/SQL edits.
+2. Scoring rules are already extracted into D1 (§4) — remaining piece is extracting branding into an equivalent config shape (§5), with ATL B3 still running as a single tenant against it (no multi-tenant infra yet).
+3. Stand up the per-league D1 + Clerk Organization wiring (§2/§3) with ATL B3 as tenant #1 and one synthetic second tenant, to prove isolation actually holds — this is also when the existing `scoring_categories`/`scoring_items`/`submission_points` tables (and the admin UI over them) get scoped by league.
+4. Extend the existing admin surface (§6) — already built for a single tenant — to be league-scoped, so onboarding a second *real* league happens by hand through the platform, not through direct file/SQL edits.
 5. Only then: domains-for-customers (§7) and billing, once there's a second paying customer to justify them.
 
 ## 11. Open questions requiring a decision before scoping further
